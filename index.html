@@ -1,0 +1,1429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HCP / Patient / Business Contact Matcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --border: #d8dde6;
+      --text: #1d2433;
+      --muted: #667085;
+      --accent: #1f6feb;
+      --good: #0f766e;
+      --warn: #b45309;
+      --bad: #b42318;
+      --chip: #eef2ff;
+      --chip-active: #dbeafe;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.4;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 28px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    header h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      padding: 24px 28px 40px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, select, input[type="search"] {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      padding: 9px 12px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    input[type="file"] {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: white;
+      min-width: 320px;
+    }
+
+    input[type="search"] {
+      min-width: 260px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fbfcfe;
+    }
+
+    .card .value {
+      font-size: 24px;
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+
+    .card .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .chip {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: var(--chip);
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .chip.active {
+      background: var(--chip-active);
+      border-color: var(--accent);
+      color: #174ea6;
+      font-weight: 650;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    .sidebar h3, .table-panel h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .criterion-list {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .criterion-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .criterion-item:last-child { border-bottom: 0; }
+    .criterion-item.active { background: var(--chip-active); }
+    .criterion-item .count { color: var(--muted); }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 680px;
+    }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      font-size: 13px;
+      min-width: 1250px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+      background: white;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f8fafc;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    tr:hover td { background: #fbfdff; }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.hcp { background: #e0f2fe; color: #075985; }
+    .badge.business { background: #ecfdf3; color: #027a48; }
+    .badge.patient { background: #fff7ed; color: #c2410c; }
+    .badge.org { background: #f2f4f7; color: #344054; }
+    .badge.review { background: #fef3c7; color: #92400e; }
+    .badge.conflict { background: #fee4e2; color: #b42318; }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .evidence {
+      max-width: 420px;
+    }
+
+    .evidence div {
+      margin-bottom: 4px;
+    }
+
+    .criteria {
+      max-width: 360px;
+    }
+
+    .mini-chip {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 6px;
+      margin: 0 4px 4px 0;
+      background: #f9fafb;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .actions select {
+      min-width: 190px;
+      padding: 7px 9px;
+    }
+
+    .notice {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      margin-top: 12px;
+    }
+
+    .ok {
+      background: #ecfdf3;
+      border: 1px solid #a7f3d0;
+      color: #027a48;
+    }
+
+    code {
+      background: #f2f4f7;
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>HCP / Patient / Business Contact Matcher</h1>
+    <p>Standalone browser app. Upload CSV exports, resolve identities, link people to accounts, review by matching criterion, and export results. No network calls.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="row">
+        <input id="files" type="file" multiple accept=".csv">
+        <button id="run" class="primary">Run matching</button>
+        <button id="download" disabled>Download classified CSV</button>
+        <button id="downloadReviewed" disabled>Download reviewed CSV</button>
+        <button id="resetFilters" disabled>Reset filters</button>
+      </div>
+      <div class="notice">
+        CSV is supported natively. For now, export XLSX files to CSV before upload. Best practice: upload <code>utenti_app.csv</code> together with Shopify/Klaviyo/Fatture/Site exports.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="summary-grid" id="summaryGrid">
+        <div class="card"><div class="value">0</div><div class="label">Rows processed</div></div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <aside class="panel sidebar">
+        <h3>Review by matching criterion</h3>
+        <div class="small">Click one or more criteria. Rows must match all selected criteria.</div>
+        <div class="chips">
+          <span class="chip" data-quick="LINKED_TO_ACCOUNT">Linked to account</span>
+          <span class="chip" data-quick="LINKED_TO_HEALTHCARE_ACCOUNT">Healthcare account</span>
+          <span class="chip" data-quick="NO_MASTER_RECORD">No master record</span>
+          <span class="chip" data-quick="MASTER_DOCTOR_TRUE">Tracker doctor</span>
+          <span class="chip" data-quick="MASTER_DOCTOR_FALSE">Tracker non-doctor</span>
+          <span class="chip" data-quick="CONFLICT_MASTER_NON_DOCTOR_BUT_ACCOUNT_LINKED">Conflict</span>
+        </div>
+        <div id="criterionList" class="criterion-list" style="margin-top: 12px;"></div>
+      </aside>
+
+      <section class="panel table-panel">
+        <div class="row" style="justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h3>Resolved contacts and rows</h3>
+            <div class="small" id="tableInfo">No data loaded.</div>
+          </div>
+          <div class="row">
+            <input id="search" type="search" placeholder="Search email, name, company, evidence..." disabled>
+            <select id="labelFilter" disabled>
+              <option value="">All labels</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top: 12px;">
+          <table id="resultsTable">
+            <thead>
+              <tr>
+                <th>Suggested label</th>
+                <th>Review</th>
+                <th>Confidence</th>
+                <th>Contact</th>
+                <th>Linked account</th>
+                <th>Criteria</th>
+                <th>Evidence</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="8" class="small">Upload CSV files and run matching.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  const FREE_EMAIL_DOMAINS = new Set([
+    "gmail.com", "googlemail.com", "icloud.com", "me.com", "mac.com", "hotmail.com", "outlook.com",
+    "live.com", "yahoo.com", "email.it", "libero.it", "virgilio.it", "tiscali.it",
+    "gmx.de", "proton.me", "protonmail.com", "aol.com"
+  ]);
+
+  const HEALTHCARE_KEYWORDS = [
+    "ospedale", "hospital", "clinica", "clinic", "ambulatorio", "poliambulatorio",
+    "studio medico", "centro medico", "cardiologia", "cardiology", "farmacia", "pharmacy",
+    "laboratorio", "lab", "istituto clinico", "medical center", "healthcare", "surgery",
+    "surgeon", "doctor", "medico", "dott", "dott.", "prof", "prof.", "careplus",
+    "therapy", "terapia", "riabilitazione", "diagnostica", "radiologia"
+  ];
+
+  const HCP_ROLE_KEYWORDS = [
+    "doctor", "dr", "dr.", "dott", "dott.", "prof", "prof.", "medico", "cardiologo",
+    "chirurgo", "surgeon", "physician", "specialista", "infermiere", "nurse", "farmacista"
+  ];
+
+  const BUSINESS_KEYWORDS = [
+    "srl", "s.r.l", "spa", "s.p.a", "ltd", "gmbh", "inc", "bv", "llc", "company",
+    "solution", "solutions", "group", "holding", "ufficio acquisti", "procurement",
+    "amministrazione", "buyer", "manager", "director", "responsabile", "referente"
+  ];
+
+  const PATIENT_PRIVATE_KEYWORDS = [
+    "patient", "paziente", "privato", "private", "customer", "cliente", "newsletter",
+    "subscriber", "iscritto", "consumer", "home", "personale"
+  ];
+
+  const FIELD_ALIASES = {
+    email: ["email", "email_lc", "e-mail", "indirizzo e-mail", "indirizzo email"],
+    firstName: ["first_name", "first name", "nome", "user_data.first_name"],
+    lastName: ["last_name", "last name", "cognome", "user_data.last_name"],
+    fullName: ["nome e cognome", "referente", "name", "full name", "customer name"],
+    company: ["company", "organization", "default address company", "denominazione", "azienda", "company name"],
+    phone: ["phone", "phone number", "telefono", "default address phone", "mobile", "cellulare"],
+    city: ["city", "comune", "default address city"],
+    province: ["province/state", "state / region", "provincia", "default address province code", "province"],
+    country: ["country", "paese", "default address country code", "user_data.country"],
+    address1: ["address", "indirizzo", "default address address1", "address 1"],
+    address2: ["address 2", "note indirizzo", "default address address2"],
+    zip: ["zip code", "cap", "default address zip", "postal code"],
+    vat: ["p.iva/tax id", "partita iva", "vat", "tax id", "piva", "p.iva"],
+    taxCode: ["codice fiscale", "fiscal code"],
+    tags: ["tags", "tag"],
+    title: ["title", "job title", "role", "ruolo"],
+    note: ["note", "notes", "source", "sorgente"],
+    isDoctor: ["user_data.is_doctor", "is_doctor", "doctor", "is doctor"]
+  };
+
+  const CRITERION_LABELS = {
+    MASTER_EMAIL_MATCH: "Master exact email match",
+    MASTER_PHONE_MATCH: "Master phone match",
+    MASTER_NAME_FUZZY_MATCH: "Master fuzzy name match",
+    MASTER_DOCTOR_TRUE: "Tracker says doctor",
+    MASTER_DOCTOR_FALSE: "Tracker says non-doctor",
+    MASTER_PATIENT_OR_PRIVATE: "Master patient/private evidence",
+    NO_MASTER_RECORD: "No master record",
+
+    LINKED_TO_ACCOUNT: "Linked to account",
+    LINKED_TO_HEALTHCARE_ACCOUNT: "Linked to healthcare account",
+    LINKED_TO_BUSINESS_ACCOUNT: "Linked to business account",
+    ACCOUNT_EMAIL_MATCH: "Account email match",
+    ACCOUNT_PHONE_MATCH: "Account phone match",
+    ACCOUNT_VAT_MATCH: "Account VAT/TAX match",
+    ACCOUNT_COMPANY_EXACT_MATCH: "Account company exact match",
+    ACCOUNT_COMPANY_FUZZY_MATCH: "Account company fuzzy match",
+    ACCOUNT_ADDRESS_MATCH: "Account address match",
+    ACCOUNT_DOMAIN_MATCH: "Account domain match",
+
+    EXACT_EMAIL_MATCH_ACROSS_EXPORTS: "Exact email across exports",
+    EXACT_PHONE_MATCH_ACROSS_EXPORTS: "Exact phone across exports",
+    SAME_DOMAIN_MATCH: "Same non-free domain cluster",
+
+    HCP_KEYWORD_IN_TITLE: "HCP keyword in title",
+    HCP_KEYWORD_IN_COMPANY: "HCP keyword in company",
+    HEALTHCARE_ORG_KEYWORD: "Healthcare organization keyword",
+    BUSINESS_LEGAL_SUFFIX: "Business/legal keyword",
+    NON_FREE_EMAIL_DOMAIN: "Non-free email domain",
+    COMMERCIAL_ACTIVITY_PRESENT: "Commercial/order activity",
+    INVOICE_ACTIVITY_PRESENT: "Invoice/fatture activity",
+
+    FREE_EMAIL_DOMAIN: "Free email domain",
+    NO_COMPANY: "No company",
+    NO_LINKED_ACCOUNT: "No linked account",
+    PERSONAL_EMAIL_PATTERN: "Personal email pattern",
+    NEWSLETTER_OR_PRIVATE_TAG: "Newsletter/private tag",
+
+    ORGANIZATION_ROW: "Organization row",
+    PERSON_ROW: "Person row",
+
+    CONFLICT_MASTER_PATIENT_BUT_ACCOUNT_LINKED: "Conflict: master patient but account linked",
+    CONFLICT_MASTER_NON_DOCTOR_BUT_ACCOUNT_LINKED: "Conflict: tracker non-doctor but account linked",
+    CONFLICT_FREE_EMAIL_BUT_BUSINESS_CONTEXT: "Conflict: free email but business context",
+    CONFLICT_LOW_CONFIDENCE_FUZZY_MATCH: "Conflict: low-confidence fuzzy match",
+    NEEDS_REVIEW: "Needs review"
+  };
+
+  const LABELS = [
+    "HCP_CONFIRMED",
+    "HCP_PROBABLE",
+    "HEALTHCARE_BUSINESS_CONTACT_PROBABLE",
+    "BUSINESS_CONTACT_CONFIRMED",
+    "BUSINESS_CONTACT_PROBABLE",
+    "PATIENT_OR_PRIVATE_CONFIRMED",
+    "PATIENT_OR_PRIVATE_PROBABLE",
+    "ORGANIZATION_ACCOUNT",
+    "AMBIGUOUS_OR_REVIEW"
+  ];
+
+  let allRows = [];
+  let filteredRows = [];
+  let selectedCriteria = new Set();
+  let reviewedLabels = new Map();
+
+  function norm(value) {
+    return String(value ?? "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}@.+\-\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function compact(value) {
+    return norm(value).replace(/[^a-z0-9@.+-]/g, "");
+  }
+
+  function phoneKey(value) {
+    let digits = String(value ?? "").replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.startsWith("0039") && digits.length > 10) digits = digits.slice(4);
+    if (digits.startsWith("39") && digits.length > 10) digits = digits.slice(2);
+    return digits;
+  }
+
+  function emailDomain(email) {
+    const e = compact(email);
+    const at = e.lastIndexOf("@");
+    return at >= 0 ? e.slice(at + 1) : "";
+  }
+
+  function emailLocal(email) {
+    const e = compact(email);
+    const at = e.lastIndexOf("@");
+    if (at < 0) return "";
+    return e.slice(0, at).replace(/[._+\-0-9]/g, " ");
+  }
+
+  function isFreeEmail(email) {
+    const d = emailDomain(email);
+    return d ? FREE_EMAIL_DOMAINS.has(d) : false;
+  }
+
+  function truthyDoctor(value) {
+    const v = norm(value);
+    return ["vero", "true", "1", "yes", "si", "sì", "y"].includes(v);
+  }
+
+  function falsyDoctor(value) {
+    const v = norm(value);
+    return ["falso", "false", "0", "no", "n"].includes(v);
+  }
+
+  function getValue(row, canonicalName) {
+    const aliases = FIELD_ALIASES[canonicalName] || [canonicalName];
+    const keys = Object.keys(row);
+    for (const alias of aliases) {
+      const k = keys.find(key => norm(key) === norm(alias));
+      if (k && row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== "") {
+        return row[k];
+      }
+    }
+    return "";
+  }
+
+  function fullName(row) {
+    const explicit = getValue(row, "fullName");
+    const first = getValue(row, "firstName");
+    const last = getValue(row, "lastName");
+    return norm(explicit || `${first} ${last}`);
+  }
+
+  function companyText(row) {
+    return norm(getValue(row, "company"));
+  }
+
+  function rowText(row) {
+    return norm([
+      getValue(row, "company"),
+      getValue(row, "title"),
+      getValue(row, "tags"),
+      getValue(row, "note"),
+      getValue(row, "fullName"),
+      getValue(row, "email")
+    ].join(" "));
+  }
+
+  function addressText(row) {
+    return norm([
+      getValue(row, "address1"),
+      getValue(row, "address2"),
+      getValue(row, "city"),
+      getValue(row, "province"),
+      getValue(row, "zip"),
+      getValue(row, "country")
+    ].join(" "));
+  }
+
+  function hasAny(text, keywords) {
+    const t = norm(text);
+    return keywords.filter(k => t.includes(norm(k)));
+  }
+
+  function rowHasCommercialActivity(row) {
+    const keys = Object.keys(row);
+    for (const k of keys) {
+      const nk = norm(k);
+      const val = String(row[k] ?? "").trim();
+      if (!val) continue;
+      if (["total spent", "total_spent", "total orders", "total_orders", "orders", "amount", "totale", "imponibile", "fatturato"].some(x => nk.includes(x))) {
+        const n = Number(String(val).replace(",", ".").replace(/[^\d.-]/g, ""));
+        if (!Number.isNaN(n) && n > 0) return true;
+        if (val && val !== "0") return true;
+      }
+    }
+    return false;
+  }
+
+  function sourceLooksInvoice(row) {
+    const src = norm(row.__source_file);
+    return src.includes("fatture") || src.includes("invoice") || src.includes("cloud");
+  }
+
+  function jaroWinkler(s1, s2) {
+    s1 = norm(s1); s2 = norm(s2);
+    if (s1 === s2) return 1;
+    if (!s1 || !s2) return 0;
+    const len1 = s1.length, len2 = s2.length;
+    const matchDistance = Math.max(0, Math.floor(Math.max(len1, len2) / 2) - 1);
+    const s1Matches = new Array(len1).fill(false);
+    const s2Matches = new Array(len2).fill(false);
+    let matches = 0;
+    for (let i = 0; i < len1; i++) {
+      const start = Math.max(0, i - matchDistance);
+      const end = Math.min(i + matchDistance + 1, len2);
+      for (let j = start; j < end; j++) {
+        if (s2Matches[j]) continue;
+        if (s1[i] !== s2[j]) continue;
+        s1Matches[i] = true;
+        s2Matches[j] = true;
+        matches++;
+        break;
+      }
+    }
+    if (!matches) return 0;
+    let k = 0, transpositions = 0;
+    for (let i = 0; i < len1; i++) {
+      if (!s1Matches[i]) continue;
+      while (!s2Matches[k]) k++;
+      if (s1[i] !== s2[k]) transpositions++;
+      k++;
+    }
+    const m = matches;
+    const jaro = (m / len1 + m / len2 + (m - transpositions / 2) / m) / 3;
+    let prefix = 0;
+    for (let i = 0; i < Math.min(4, len1, len2); i++) {
+      if (s1[i] === s2[i]) prefix++;
+      else break;
+    }
+    return jaro + prefix * 0.1 * (1 - jaro);
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    const delimiter = detectDelimiter(text);
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], n = text[i + 1];
+      if (c === '"' && inQuotes && n === '"') {
+        field += '"';
+        i++;
+        continue;
+      }
+      if (c === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (c === delimiter && !inQuotes) {
+        row.push(field);
+        field = "";
+        continue;
+      }
+      if ((c === "\n" || c === "\r") && !inQuotes) {
+        if (c === "\r" && n === "\n") i++;
+        row.push(field);
+        field = "";
+        if (row.some(v => String(v).trim() !== "")) rows.push(row);
+        row = [];
+        continue;
+      }
+      field += c;
+    }
+
+    row.push(field);
+    if (row.some(v => String(v).trim() !== "")) rows.push(row);
+    if (!rows.length) return [];
+
+    const header = rows[0].map(h => String(h).replace(/^\ufeff/, "").trim());
+    return rows.slice(1).map((r, idx) => {
+      const obj = {};
+      header.forEach((h, i) => obj[h || `column_${i + 1}`] = r[i] ?? "");
+      obj.__row_number = idx + 2;
+      return obj;
+    });
+  }
+
+  function detectDelimiter(text) {
+    const firstLine = text.split(/\r?\n/).find(l => l.trim()) || "";
+    const candidates = [",", ";", "\t"];
+    let best = ",";
+    let bestCount = -1;
+    for (const d of candidates) {
+      const count = firstLine.split(d).length;
+      if (count > bestCount) {
+        bestCount = count;
+        best = d;
+      }
+    }
+    return best;
+  }
+
+  async function loadFiles(fileList) {
+    const records = [];
+    for (const file of Array.from(fileList)) {
+      if (!file.name.toLowerCase().endsWith(".csv")) {
+        throw new Error(`Unsupported file "${file.name}". Export XLS/XLSX to CSV first.`);
+      }
+      const text = await file.text();
+      const rows = parseCSV(text);
+      for (const row of rows) {
+        row.__source_file = file.name;
+        records.push(row);
+      }
+    }
+    return records;
+  }
+
+  function isLikelyMasterRow(row) {
+    const src = norm(row.__source_file);
+    if (src.includes("utenti_app")) return true;
+    return Object.keys(row).some(k => norm(k) === "user_data.is_doctor");
+  }
+
+  function isPersonRow(row) {
+    const email = getValue(row, "email");
+    const name = fullName(row);
+    const first = getValue(row, "firstName");
+    const last = getValue(row, "lastName");
+    return Boolean(email || name || first || last);
+  }
+
+  function isOrganizationRow(row) {
+    const company = companyText(row);
+    const name = fullName(row);
+    const email = getValue(row, "email");
+    const vat = getValue(row, "vat");
+    const text = rowText(row);
+    const hasHealthcare = hasAny(text, HEALTHCARE_KEYWORDS).length > 0;
+    const hasBusiness = hasAny(text, BUSINESS_KEYWORDS).length > 0;
+
+    if (vat && company && !name) return true;
+    if (company && !email && !name && (hasHealthcare || hasBusiness || sourceLooksInvoice(row))) return true;
+    if (sourceLooksInvoice(row) && company && !getValue(row, "fullName")) return true;
+    return false;
+  }
+
+  function buildIndexes(records) {
+    const masterByEmail = new Map();
+    const masterRows = [];
+    const emailCounts = new Map();
+    const phoneCounts = new Map();
+    const domainCounts = new Map();
+    const accounts = [];
+
+    for (const row of records) {
+      const email = compact(getValue(row, "email"));
+      const phone = phoneKey(getValue(row, "phone"));
+      const domain = emailDomain(email);
+
+      if (email) emailCounts.set(email, (emailCounts.get(email) || 0) + 1);
+      if (phone) phoneCounts.set(phone, (phoneCounts.get(phone) || 0) + 1);
+      if (domain && !FREE_EMAIL_DOMAINS.has(domain)) domainCounts.set(domain, (domainCounts.get(domain) || 0) + 1);
+
+      if (isLikelyMasterRow(row)) {
+        const m = {
+          row,
+          email,
+          phone,
+          name: fullName(row),
+          isDoctorRaw: getValue(row, "isDoctor"),
+          isDoctor: truthyDoctor(getValue(row, "isDoctor")),
+          isNonDoctor: falsyDoctor(getValue(row, "isDoctor")) || (!truthyDoctor(getValue(row, "isDoctor")) && String(getValue(row, "isDoctor")).trim() !== "")
+        };
+        masterRows.push(m);
+        if (email) masterByEmail.set(email, m);
+      }
+    }
+
+    for (const row of records) {
+      const company = companyText(row);
+      const text = rowText(row);
+      const email = compact(getValue(row, "email"));
+      const domain = emailDomain(email);
+      const vat = compact(getValue(row, "vat"));
+      const phone = phoneKey(getValue(row, "phone"));
+      const address = addressText(row);
+      const healthcareHits = hasAny(text, HEALTHCARE_KEYWORDS);
+      const businessHits = hasAny(text, BUSINESS_KEYWORDS);
+      const commercial = rowHasCommercialActivity(row);
+      const invoice = sourceLooksInvoice(row);
+
+      const accountCandidate =
+        isOrganizationRow(row) ||
+        Boolean(company && (healthcareHits.length || businessHits.length || vat || invoice || commercial)) ||
+        Boolean(vat);
+
+      if (accountCandidate) {
+        accounts.push({
+          row,
+          name: company || fullName(row) || getValue(row, "email") || row.__source_file,
+          company,
+          email,
+          domain,
+          vat,
+          phone,
+          address,
+          isHealthcare: healthcareHits.length > 0,
+          isBusiness: businessHits.length > 0 || Boolean(vat) || invoice || commercial,
+          healthcareHits,
+          businessHits,
+          source: row.__source_file
+        });
+      }
+    }
+
+    return { masterByEmail, masterRows, emailCounts, phoneCounts, domainCounts, accounts };
+  }
+
+  function addCriterion(out, criterion, evidence) {
+    if (!out.criteria.includes(criterion)) out.criteria.push(criterion);
+    if (evidence) out.evidence.push(evidence);
+  }
+
+  function findBestAccount(row, indexes) {
+    const email = compact(getValue(row, "email"));
+    const phone = phoneKey(getValue(row, "phone"));
+    const vat = compact(getValue(row, "vat"));
+    const company = companyText(row);
+    const address = addressText(row);
+    const domain = emailDomain(email);
+
+    let best = null;
+    let bestScore = 0;
+    let bestCriteria = [];
+    let bestEvidence = [];
+
+    for (const account of indexes.accounts) {
+      if (account.row === row) continue;
+      let score = 0;
+      let criteria = [];
+      let evidence = [];
+
+      if (email && account.email && email === account.email) {
+        score = Math.max(score, 0.95);
+        criteria.push("ACCOUNT_EMAIL_MATCH");
+        evidence.push(`Same email as account row: ${email}`);
+      }
+      if (phone && account.phone && phone === account.phone) {
+        score = Math.max(score, 0.82);
+        criteria.push("ACCOUNT_PHONE_MATCH");
+        evidence.push(`Same phone as account row: ${phone}`);
+      }
+      if (vat && account.vat && vat === account.vat) {
+        score = Math.max(score, 0.98);
+        criteria.push("ACCOUNT_VAT_MATCH");
+        evidence.push(`Same VAT/TAX ID as account row: ${vat}`);
+      }
+      if (company && account.company) {
+        if (company === account.company) {
+          score = Math.max(score, 0.88);
+          criteria.push("ACCOUNT_COMPANY_EXACT_MATCH");
+          evidence.push(`Company exact match with account: ${account.company}`);
+        } else {
+          const sim = jaroWinkler(company, account.company);
+          if (sim >= 0.88) {
+            score = Math.max(score, 0.62 * sim);
+            criteria.push("ACCOUNT_COMPANY_FUZZY_MATCH");
+            evidence.push(`Company fuzzy match (${sim.toFixed(2)}) with account: ${account.company}`);
+          }
+        }
+      }
+      if (address && account.address) {
+        const sim = jaroWinkler(address, account.address);
+        if (sim >= 0.90) {
+          score = Math.max(score, 0.62 * sim);
+          criteria.push("ACCOUNT_ADDRESS_MATCH");
+          evidence.push(`Address match (${sim.toFixed(2)}) with account: ${account.name}`);
+        }
+      }
+      if (domain && account.domain && domain === account.domain && !FREE_EMAIL_DOMAINS.has(domain)) {
+        score = Math.max(score, 0.78);
+        criteria.push("ACCOUNT_DOMAIN_MATCH");
+        evidence.push(`Same non-free domain as account: ${domain}`);
+      }
+
+      if (score > bestScore) {
+        best = account;
+        bestScore = score;
+        bestCriteria = criteria;
+        bestEvidence = evidence;
+      }
+    }
+
+    if (bestScore >= 0.52) {
+      return { account: best, score: bestScore, criteria: bestCriteria, evidence: bestEvidence };
+    }
+    return null;
+  }
+
+  function classify(records) {
+    const indexes = buildIndexes(records);
+    return records.map((row, i) => classifyRow(row, i, indexes));
+  }
+
+  function classifyRow(row, index, indexes) {
+    const email = compact(getValue(row, "email"));
+    const rawEmail = getValue(row, "email");
+    const phone = phoneKey(getValue(row, "phone"));
+    const name = fullName(row);
+    const company = companyText(row);
+    const title = norm(getValue(row, "title"));
+    const text = rowText(row);
+    const domain = emailDomain(email);
+
+    const out = {
+      id: `r${index}`,
+      original: row,
+      source_file: row.__source_file,
+      row_number: row.__row_number,
+      email: rawEmail,
+      email_key: email,
+      phone,
+      name,
+      company: getValue(row, "company"),
+      title: getValue(row, "title"),
+      linked_account: "",
+      linked_account_score: 0,
+      suggested_label: "AMBIGUOUS_OR_REVIEW",
+      confidence: 0,
+      hcp_score: 0,
+      business_score: 0,
+      patient_score: 0,
+      criteria: [],
+      evidence: [],
+      review_label: ""
+    };
+
+    const orgRow = isOrganizationRow(row);
+    if (orgRow) addCriterion(out, "ORGANIZATION_ROW", "Row appears to represent an organization/account, not an individual.");
+    else addCriterion(out, "PERSON_ROW", "Row appears to represent a person/contact.");
+
+    if (email && indexes.emailCounts.get(email) > 1) {
+      addCriterion(out, "EXACT_EMAIL_MATCH_ACROSS_EXPORTS", `Email appears in ${indexes.emailCounts.get(email)} rows across uploaded exports.`);
+    }
+    if (phone && indexes.phoneCounts.get(phone) > 1) {
+      addCriterion(out, "EXACT_PHONE_MATCH_ACROSS_EXPORTS", `Phone appears in ${indexes.phoneCounts.get(phone)} rows across uploaded exports.`);
+    }
+    if (domain && !FREE_EMAIL_DOMAINS.has(domain) && indexes.domainCounts.get(domain) > 1) {
+      addCriterion(out, "SAME_DOMAIN_MATCH", `Non-free domain appears in multiple rows: ${domain}`);
+    }
+
+    const master = email ? indexes.masterByEmail.get(email) : null;
+    let masterPatientEvidence = false;
+    let masterDoctorEvidence = false;
+
+    if (master) {
+      addCriterion(out, "MASTER_EMAIL_MATCH", `Exact email match with master/tracker: ${email}`);
+      if (master.phone && phone && master.phone === phone) {
+        addCriterion(out, "MASTER_PHONE_MATCH", "Phone also matches master/tracker.");
+      }
+      if (master.isDoctor) {
+        masterDoctorEvidence = true;
+        out.hcp_score += 1.0;
+        addCriterion(out, "MASTER_DOCTOR_TRUE", "Master/tracker says user_data.is_doctor = true.");
+      } else if (master.isNonDoctor) {
+        masterPatientEvidence = true;
+        out.patient_score += 0.55;
+        addCriterion(out, "MASTER_DOCTOR_FALSE", "Master/tracker says user_data.is_doctor = false/non-doctor.");
+        addCriterion(out, "MASTER_PATIENT_OR_PRIVATE", "Master has non-doctor/private-user evidence. This is not automatically a patient if account evidence exists.");
+      }
+    } else {
+      addCriterion(out, "NO_MASTER_RECORD", "No exact master/tracker email match found.");
+    }
+
+    if (!master && name) {
+      let bestMasterName = null;
+      let bestSim = 0;
+      for (const m of indexes.masterRows) {
+        const sim = jaroWinkler(name, m.name);
+        if (sim > bestSim) {
+          bestSim = sim;
+          bestMasterName = m;
+        }
+      }
+      if (bestSim >= 0.94) {
+        addCriterion(out, "MASTER_NAME_FUZZY_MATCH", `Very similar name to master/tracker (${bestSim.toFixed(2)}): ${bestMasterName.name}`);
+        out.patient_score += 0.05;
+      }
+    }
+
+    const accountLink = findBestAccount(row, indexes);
+    if (accountLink) {
+      out.linked_account = accountLink.account.name;
+      out.linked_account_score = Number(accountLink.score.toFixed(3));
+      out.business_score += 0.62 * accountLink.score;
+      addCriterion(out, "LINKED_TO_ACCOUNT", `Linked to account "${accountLink.account.name}" with score ${accountLink.score.toFixed(2)}.`);
+      for (const c of accountLink.criteria) addCriterion(out, c);
+      for (const e of accountLink.evidence) out.evidence.push(e);
+
+      if (accountLink.account.isHealthcare) {
+        out.business_score += 0.22;
+        out.hcp_score += 0.18;
+        addCriterion(out, "LINKED_TO_HEALTHCARE_ACCOUNT", `Linked account is healthcare-related: ${accountLink.account.healthcareHits.join(", ")}`);
+      }
+      if (accountLink.account.isBusiness) {
+        out.business_score += 0.14;
+        addCriterion(out, "LINKED_TO_BUSINESS_ACCOUNT", "Linked account has business/VAT/invoice/commercial evidence.");
+      }
+    } else {
+      addCriterion(out, "NO_LINKED_ACCOUNT", "No reliable account/organization link found.");
+    }
+
+    const healthcareHits = hasAny(text, HEALTHCARE_KEYWORDS);
+    const businessHits = hasAny(text, BUSINESS_KEYWORDS);
+    const hcpRoleHits = hasAny(title || text, HCP_ROLE_KEYWORDS);
+    const patientHits = hasAny(text, PATIENT_PRIVATE_KEYWORDS);
+
+    if (healthcareHits.length) {
+      out.business_score += 0.22;
+      out.hcp_score += 0.18;
+      addCriterion(out, "HEALTHCARE_ORG_KEYWORD", `Healthcare keywords detected: ${healthcareHits.slice(0, 5).join(", ")}`);
+      if (company) addCriterion(out, "HCP_KEYWORD_IN_COMPANY", "Healthcare keyword appears in company/organization context.");
+    }
+
+    if (businessHits.length) {
+      out.business_score += 0.18;
+      addCriterion(out, "BUSINESS_LEGAL_SUFFIX", `Business/legal keywords detected: ${businessHits.slice(0, 5).join(", ")}`);
+    }
+
+    if (hcpRoleHits.length) {
+      out.hcp_score += 0.32;
+      addCriterion(out, "HCP_KEYWORD_IN_TITLE", `HCP/professional role keyword detected: ${hcpRoleHits.slice(0, 5).join(", ")}`);
+    }
+
+    if (email && !isFreeEmail(email)) {
+      out.business_score += 0.22;
+      addCriterion(out, "NON_FREE_EMAIL_DOMAIN", `Non-free email domain: ${domain}`);
+    }
+
+    if (email && isFreeEmail(email)) {
+      out.patient_score += 0.08;
+      addCriterion(out, "FREE_EMAIL_DOMAIN", `Free email domain: ${domain}`);
+    }
+
+    if (!company) {
+      out.patient_score += 0.08;
+      addCriterion(out, "NO_COMPANY", "No company/organization field detected.");
+    }
+
+    if (email && name && isFreeEmail(email) && !company && jaroWinkler(emailLocal(email), name) >= 0.82) {
+      out.patient_score += 0.08;
+      addCriterion(out, "PERSONAL_EMAIL_PATTERN", "Free email local-part resembles contact name.");
+    }
+
+    if (patientHits.length) {
+      out.patient_score += 0.12;
+      addCriterion(out, "NEWSLETTER_OR_PRIVATE_TAG", `Private/newsletter/customer keywords detected: ${patientHits.slice(0, 5).join(", ")}`);
+    }
+
+    if (rowHasCommercialActivity(row)) {
+      out.business_score += company ? 0.18 : 0.08;
+      addCriterion(out, "COMMERCIAL_ACTIVITY_PRESENT", "Commercial/order/spend activity detected in row.");
+    }
+
+    if (sourceLooksInvoice(row)) {
+      out.business_score += 0.22;
+      addCriterion(out, "INVOICE_ACTIVITY_PRESENT", "Row comes from invoice/fatture export.");
+    }
+
+    // Conflict criteria.
+    if (masterPatientEvidence && accountLink) {
+      addCriterion(out, "CONFLICT_MASTER_NON_DOCTOR_BUT_ACCOUNT_LINKED", "Master says non-doctor/private, but row is linked to an account.");
+      addCriterion(out, "CONFLICT_MASTER_PATIENT_BUT_ACCOUNT_LINKED", "Potential conflict between private/patient master evidence and business account link.");
+    }
+    if (email && isFreeEmail(email) && accountLink) {
+      addCriterion(out, "CONFLICT_FREE_EMAIL_BUT_BUSINESS_CONTEXT", "Free email exists, but account/business context is stronger.");
+    }
+
+    out.hcp_score = Math.min(1, out.hcp_score);
+    out.business_score = Math.min(1, out.business_score);
+    out.patient_score = Math.min(1, out.patient_score);
+
+    // Decision logic.
+    if (orgRow) {
+      out.suggested_label = "ORGANIZATION_ACCOUNT";
+      out.confidence = Math.max(0.72, out.business_score);
+    } else if (masterDoctorEvidence) {
+      out.suggested_label = "HCP_CONFIRMED";
+      out.confidence = 0.98;
+    } else if (accountLink && !masterPatientEvidence) {
+      if (out.hcp_score >= 0.55 || out.criteria.includes("HCP_KEYWORD_IN_TITLE")) {
+        out.suggested_label = "HCP_PROBABLE";
+        out.confidence = Math.max(0.72, out.hcp_score, out.business_score);
+      } else if (accountLink.account.isHealthcare) {
+        out.suggested_label = "HEALTHCARE_BUSINESS_CONTACT_PROBABLE";
+        out.confidence = Math.max(0.72, out.business_score);
+      } else {
+        out.suggested_label = "BUSINESS_CONTACT_PROBABLE";
+        out.confidence = Math.max(0.66, out.business_score);
+      }
+    } else if (accountLink && masterPatientEvidence) {
+      out.suggested_label = "AMBIGUOUS_OR_REVIEW";
+      out.confidence = Math.max(out.business_score, out.patient_score, 0.62);
+      addCriterion(out, "NEEDS_REVIEW", "Account link conflicts with master non-doctor/private evidence.");
+    } else if (!accountLink && masterPatientEvidence && out.patient_score >= 0.55) {
+      out.suggested_label = "PATIENT_OR_PRIVATE_CONFIRMED";
+      out.confidence = Math.max(0.72, out.patient_score);
+    } else if (!accountLink && out.patient_score >= 0.30 && out.business_score < 0.35 && out.hcp_score < 0.35) {
+      out.suggested_label = "PATIENT_OR_PRIVATE_PROBABLE";
+      out.confidence = Math.max(0.55, out.patient_score);
+    } else if (out.business_score >= 0.62 && out.patient_score < 0.45) {
+      out.suggested_label = "BUSINESS_CONTACT_PROBABLE";
+      out.confidence = out.business_score;
+    } else {
+      out.suggested_label = "AMBIGUOUS_OR_REVIEW";
+      out.confidence = Math.max(out.hcp_score, out.business_score, out.patient_score, 0.25);
+      addCriterion(out, "NEEDS_REVIEW", "Insufficient or conflicting evidence.");
+    }
+
+    out.confidence = Number(Math.min(1, out.confidence).toFixed(3));
+    out.hcp_score = Number(out.hcp_score.toFixed(3));
+    out.business_score = Number(out.business_score.toFixed(3));
+    out.patient_score = Number(out.patient_score.toFixed(3));
+    return out;
+  }
+
+  function badgeClass(label) {
+    if (label.includes("HCP")) return "hcp";
+    if (label.includes("BUSINESS")) return "business";
+    if (label.includes("PATIENT")) return "patient";
+    if (label.includes("ORGANIZATION")) return "org";
+    if (label.includes("AMBIGUOUS")) return "review";
+    return "review";
+  }
+
+  function esc(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderSummary() {
+    const counts = {};
+    for (const r of allRows) counts[r.suggested_label] = (counts[r.suggested_label] || 0) + 1;
+    const reviewedCount = Array.from(reviewedLabels.values()).filter(Boolean).length;
+    const cards = [
+      ["Rows processed", allRows.length],
+      ["Visible rows", filteredRows.length],
+      ["HCP confirmed/probable", (counts.HCP_CONFIRMED || 0) + (counts.HCP_PROBABLE || 0)],
+      ["Business contacts", (counts.HEALTHCARE_BUSINESS_CONTACT_PROBABLE || 0) + (counts.BUSINESS_CONTACT_CONFIRMED || 0) + (counts.BUSINESS_CONTACT_PROBABLE || 0)],
+      ["Patient/private", (counts.PATIENT_OR_PRIVATE_CONFIRMED || 0) + (counts.PATIENT_OR_PRIVATE_PROBABLE || 0)],
+      ["Organizations", counts.ORGANIZATION_ACCOUNT || 0],
+      ["Needs review", counts.AMBIGUOUS_OR_REVIEW || 0],
+      ["Manually reviewed", reviewedCount]
+    ];
+    document.getElementById("summaryGrid").innerHTML = cards.map(([label, value]) => `
+      <div class="card"><div class="value">${esc(value)}</div><div class="label">${esc(label)}</div></div>
+    `).join("");
+  }
+
+  function criterionCounts() {
+    const counts = {};
+    for (const r of allRows) {
+      for (const c of r.criteria) counts[c] = (counts[c] || 0) + 1;
+    }
+    return counts;
+  }
+
+  function renderCriteria() {
+    const counts = criterionCounts();
+    const sorted = Object.keys(counts).sort((a, b) => {
+      const diff = counts[b] - counts[a];
+      return diff || a.localeCompare(b);
+    });
+
+    document.getElementById("criterionList").innerHTML = sorted.map(c => `
+      <div class="criterion-item ${selectedCriteria.has(c) ? "active" : ""}" data-criterion="${esc(c)}">
+        <span>${esc(CRITERION_LABELS[c] || c)}</span>
+        <span class="count">${counts[c]}</span>
+      </div>
+    `).join("");
+
+    document.querySelectorAll(".criterion-item").forEach(el => {
+      el.onclick = () => {
+        const c = el.dataset.criterion;
+        if (selectedCriteria.has(c)) selectedCriteria.delete(c);
+        else selectedCriteria.add(c);
+        applyFilters();
+      };
+    });
+
+    document.querySelectorAll(".chip").forEach(chip => {
+      const c = chip.dataset.quick;
+      chip.classList.toggle("active", selectedCriteria.has(c));
+      chip.onclick = () => {
+        if (selectedCriteria.has(c)) selectedCriteria.delete(c);
+        else selectedCriteria.add(c);
+        applyFilters();
+      };
+    });
+  }
+
+  function renderLabelFilter() {
+    const select = document.getElementById("labelFilter");
+    const labels = Array.from(new Set(allRows.map(r => r.suggested_label))).sort();
+    select.innerHTML = '<option value="">All labels</option>' + labels.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("");
+  }
+
+  function applyFilters() {
+    const q = norm(document.getElementById("search").value);
+    const label = document.getElementById("labelFilter").value;
+
+    filteredRows = allRows.filter(r => {
+      if (label && r.suggested_label !== label) return false;
+      for (const c of selectedCriteria) {
+        if (!r.criteria.includes(c)) return false;
+      }
+      if (q) {
+        const haystack = norm([
+          r.suggested_label,
+          reviewedLabels.get(r.id) || "",
+          r.email,
+          r.name,
+          r.company,
+          r.linked_account,
+          r.source_file,
+          r.criteria.join(" "),
+          r.evidence.join(" ")
+        ].join(" "));
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+
+    renderSummary();
+    renderCriteria();
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.querySelector("#resultsTable tbody");
+    document.getElementById("tableInfo").textContent = `${filteredRows.length} rows visible out of ${allRows.length}.`;
+
+    if (!filteredRows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="small">No rows match the current filters.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filteredRows.map(r => {
+      const review = reviewedLabels.get(r.id) || "";
+      return `
+        <tr>
+          <td>
+            <span class="badge ${badgeClass(r.suggested_label)}">${esc(r.suggested_label)}</span>
+            <div class="small">HCP ${r.hcp_score} · Business ${r.business_score} · Patient ${r.patient_score}</div>
+          </td>
+          <td class="actions">
+            <select data-review-id="${esc(r.id)}">
+              <option value="">Not reviewed</option>
+              ${LABELS.map(l => `<option value="${esc(l)}" ${review === l ? "selected" : ""}>${esc(l)}</option>`).join("")}
+              <option value="IGNORE" ${review === "IGNORE" ? "selected" : ""}>IGNORE</option>
+            </select>
+          </td>
+          <td>
+            <strong>${esc(r.confidence)}</strong>
+            <div class="small">account link ${esc(r.linked_account_score || 0)}</div>
+          </td>
+          <td>
+            <strong>${esc(r.name || "(no name)")}</strong>
+            <div>${esc(r.email || "")}</div>
+            <div class="small">${esc(r.phone || "")}</div>
+            <div class="small">${esc(r.title || "")}</div>
+          </td>
+          <td>
+            <strong>${esc(r.linked_account || "")}</strong>
+            <div class="small">${esc(r.company || "")}</div>
+          </td>
+          <td class="criteria">
+            ${r.criteria.map(c => `<span class="mini-chip" title="${esc(c)}">${esc(CRITERION_LABELS[c] || c)}</span>`).join("")}
+          </td>
+          <td class="evidence">
+            ${r.evidence.slice(0, 8).map(e => `<div>• ${esc(e)}</div>`).join("")}
+            ${r.evidence.length > 8 ? `<div class="small">+ ${r.evidence.length - 8} more evidence items</div>` : ""}
+          </td>
+          <td>
+            ${esc(r.source_file)}
+            <div class="small">row ${esc(r.row_number || "")}</div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    document.querySelectorAll("select[data-review-id]").forEach(sel => {
+      sel.onchange = () => {
+        reviewedLabels.set(sel.dataset.reviewId, sel.value);
+        renderSummary();
+      };
+    });
+  }
+
+  function csvEscape(value) {
+    return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  }
+
+  function rowsToCSV(rows, includeReview) {
+    const cols = [
+      "suggested_label",
+      "review_label",
+      "confidence",
+      "hcp_score",
+      "business_score",
+      "patient_score",
+      "email",
+      "phone",
+      "name",
+      "company",
+      "title",
+      "linked_account",
+      "linked_account_score",
+      "criteria",
+      "evidence",
+      "source_file",
+      "row_number"
+    ];
+
+    const lines = [cols.join(",")];
+    for (const r of rows) {
+      const obj = {
+        suggested_label: r.suggested_label,
+        review_label: includeReview ? (reviewedLabels.get(r.id) || "") : "",
+        confidence: r.confidence,
+        hcp_score: r.hcp_score,
+        business_score: r.business_score,
+        patient_score: r.patient_score,
+        email: r.email,
+        phone: r.phone,
+        name: r.name,
+        company: r.company,
+        title: r.title,
+        linked_account: r.linked_account,
+        linked_account_score: r.linked_account_score,
+        criteria: r.criteria.join(" | "),
+        evidence: r.evidence.join(" | "),
+        source_file: r.source_file,
+        row_number: r.row_number
+      };
+      lines.push(cols.map(c => csvEscape(obj[c])).join(","));
+    }
+    return lines.join("\n");
+  }
+
+  function download(filename, content) {
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  document.getElementById("run").onclick = async () => {
+    try {
+      const files = document.getElementById("files").files;
+      if (!files.length) {
+        alert("Select at least one CSV file.");
+        return;
+      }
+
+      const records = await loadFiles(files);
+      allRows = classify(records);
+      filteredRows = allRows.slice();
+      selectedCriteria.clear();
+      reviewedLabels.clear();
+
+      document.getElementById("download").disabled = false;
+      document.getElementById("downloadReviewed").disabled = false;
+      document.getElementById("resetFilters").disabled = false;
+      document.getElementById("search").disabled = false;
+      document.getElementById("labelFilter").disabled = false;
+
+      renderLabelFilter();
+      applyFilters();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || String(err));
+    }
+  };
+
+  document.getElementById("download").onclick = () => {
+    download("hcp_patient_business_classified.csv", rowsToCSV(allRows, false));
+  };
+
+  document.getElementById("downloadReviewed").onclick = () => {
+    download("hcp_patient_business_reviewed.csv", rowsToCSV(allRows, true));
+  };
+
+  document.getElementById("resetFilters").onclick = () => {
+    selectedCriteria.clear();
+    document.getElementById("search").value = "";
+    document.getElementById("labelFilter").value = "";
+    applyFilters();
+  };
+
+  document.getElementById("search").oninput = () => applyFilters();
+  document.getElementById("labelFilter").onchange = () => applyFilters();
+
+})();
+</script>
+</body>
+</html>
