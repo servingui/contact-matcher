@@ -278,11 +278,13 @@
       </label>
       <button id="scan" class="primary">Load files</button>
       <button id="run" class="primary" disabled>Run matching</button>
-      <button id="download" disabled>Download CSV</button>
+      <button id="download" disabled>Download match report</button>
+      <button id="downloadNoPatients" disabled>Download input files: patients removed</button>
+      <button id="downloadDoctorsOnly" disabled>Download input files: doctors only</button>
       <button id="reset" disabled>Reset filters</button>
     </div>
     <div class="hint">
-      The tracker should normally be <code>utenti_app.csv</code>. Accepted doctor values:
+      The tracker should normally be <code>utenti_app.csv</code>. Export buttons generate cleaned versions of the non-tracker input files, preserving their original columns. Accepted doctor values:
       <code>VERO</code>, <code>TRUE</code>, <code>1</code>, <code>YES</code>, <code>SI</code>.
       Accepted patient/non-doctor values:
       <code>FALSO</code>, <code>FALSE</code>, <code>0</code>, <code>NO</code>.
@@ -1070,6 +1072,8 @@
       document.getElementById("search").disabled = false;
       document.getElementById("labelFilter").disabled = false;
       document.getElementById("download").disabled = false;
+      document.getElementById("downloadNoPatients").disabled = false;
+      document.getElementById("downloadDoctorsOnly").disabled = false;
 
       renderFileStatus();
       applyFilters();
@@ -1082,6 +1086,68 @@
   document.getElementById("download").onclick = () => {
     downloadFile("tracker_based_doctor_patient_matches.csv", exportCSV(allResults));
   };
+
+
+  function safeFilename(name) {
+    return String(name || "export.csv")
+      .replace(/\.csv$/i, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "export";
+  }
+
+  function originalRowsToCSV(headers, rows) {
+    const lines = [headers.map(csvEscape).join(",")];
+    for (const row of rows) {
+      lines.push(headers.map(h => csvEscape(row[h] ?? "")).join(","));
+    }
+    return lines.join("\n");
+  }
+
+  function downloadFilteredInputFiles(mode) {
+    if (!allResults.length) {
+      alert("Run matching first.");
+      return;
+    }
+
+    const trackerFile = parsedFiles[trackerFileIndex];
+    const trackerName = trackerFile ? trackerFile.name : "";
+    const nonTrackerFiles = parsedFiles.filter(f => f.name !== trackerName);
+
+    if (!nonTrackerFiles.length) {
+      alert("No non-tracker input files found. Upload at least one export file in addition to the tracker.");
+      return;
+    }
+
+    let predicate;
+    let prefix;
+    if (mode === "no_patients") {
+      predicate = r => r.label !== "PATIENT_CERTAIN";
+      prefix = "patients_removed";
+    } else if (mode === "doctors_only") {
+      predicate = r => r.label === "DOCTOR_CERTAIN";
+      prefix = "doctors_only";
+    } else {
+      throw new Error("Unknown export mode: " + mode);
+    }
+
+    let downloads = 0;
+    for (const file of nonTrackerFiles) {
+      const resultRows = allResults.filter(r => r.source_file === file.name && predicate(r));
+      const rowNumbers = new Set(resultRows.map(r => r.row_number));
+      const originalRows = file.rows.filter(row => rowNumbers.has(row.__row_number));
+      const csv = originalRowsToCSV(file.headers, originalRows);
+      downloadFile(`${prefix}_${safeFilename(file.name)}.csv`, csv);
+      downloads++;
+    }
+
+    if (downloads > 1) {
+      alert(`Started ${downloads} downloads. Your browser may ask you to allow multiple downloads from this page.`);
+    }
+  }
+
+  document.getElementById("downloadNoPatients").onclick = () => downloadFilteredInputFiles("no_patients");
+
+  document.getElementById("downloadDoctorsOnly").onclick = () => downloadFilteredInputFiles("doctors_only");
 
   document.getElementById("reset").onclick = () => {
     activeFilter = "";
