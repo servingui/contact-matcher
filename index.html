@@ -6,12 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
-      --bg: #f7f8fa;
-      --panel: #ffffff;
+      --bg: #f6f7f9;
+      --panel: #fff;
+      --panel-2: #fbfcfe;
       --border: #d9dee7;
       --text: #172033;
       --muted: #667085;
       --blue: #1f6feb;
+      --blue-bg: #dbeafe;
       --green-bg: #ecfdf3;
       --green: #027a48;
       --orange-bg: #fff7ed;
@@ -20,74 +22,94 @@
       --gray: #344054;
       --red-bg: #fee4e2;
       --red: #b42318;
+      --yellow-bg: #fffbeb;
+      --yellow: #92400e;
     }
 
     * { box-sizing: border-box; }
 
-    body {
+    html, body {
+      height: 100%;
       margin: 0;
+    }
+
+    body {
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.4;
+      overflow: hidden;
     }
 
     header {
+      height: 72px;
       background: var(--panel);
       border-bottom: 1px solid var(--border);
-      padding: 22px 28px;
+      padding: 14px 22px;
     }
 
     header h1 {
-      margin: 0 0 6px;
-      font-size: 23px;
+      margin: 0 0 4px;
+      font-size: 20px;
     }
 
     header p {
       margin: 0;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
     }
 
     main {
-      max-width: 1500px;
-      margin: 0 auto;
-      padding: 24px 28px 44px;
+      height: calc(100vh - 72px);
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 10px;
+      padding: 12px;
+      overflow: hidden;
     }
 
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 18px;
+      border-radius: 12px;
+      padding: 12px;
+      min-width: 0;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
     }
 
     .row {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: center;
       flex-wrap: wrap;
+      min-width: 0;
     }
 
     button, select, input[type="search"] {
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 9px;
       background: white;
-      padding: 9px 12px;
-      font-size: 14px;
+      padding: 7px 10px;
+      font-size: 13px;
+      max-width: 100%;
     }
 
     button {
       cursor: pointer;
       font-weight: 650;
+      white-space: nowrap;
     }
 
     button.primary {
       background: var(--blue);
-      border-color: var(--blue);
       color: white;
+      border-color: var(--blue);
     }
 
     button:disabled, select:disabled, input:disabled {
@@ -97,248 +119,381 @@
 
     input[type="file"] {
       border: 1px dashed var(--border);
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 10px;
+      padding: 8px;
       background: white;
-      min-width: 340px;
+      font-size: 13px;
+      max-width: 360px;
     }
 
     input[type="search"] {
-      min-width: 280px;
+      min-width: 240px;
     }
 
     .hint {
-      margin-top: 12px;
-      padding: 12px;
-      background: #fffbeb;
+      font-size: 12px;
+      color: var(--yellow);
+      background: var(--yellow-bg);
       border: 1px solid #fde68a;
-      border-radius: 12px;
-      color: #92400e;
-      font-size: 14px;
-    }
-
-    .ok {
-      background: #ecfdf3;
-      border-color: #a7f3d0;
-      color: #027a48;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-top: 8px;
     }
 
     code {
       background: #f2f4f7;
-      border-radius: 6px;
-      padding: 2px 5px;
+      border-radius: 5px;
+      padding: 1px 4px;
     }
 
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(10, minmax(92px, 1fr));
+      gap: 8px;
     }
 
     .card {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fbfcfe;
-      padding: 14px;
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 9px 10px;
+      min-width: 0;
     }
 
     .card .value {
-      font-size: 24px;
-      font-weight: 760;
-      margin-bottom: 4px;
+      font-size: 19px;
+      font-weight: 780;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .card .label {
-      font-size: 13px;
       color: var(--muted);
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 290px 1fr;
-      gap: 18px;
-    }
-
-    @media (max-width: 1050px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-
-    .sidebar h3, .table-panel h3 {
-      margin: 0 0 12px;
-      font-size: 16px;
-    }
-
-    .filter-list {
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      font-size: 11px;
+      white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .filter-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px 11px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
+    .workspace {
+      display: grid;
+      grid-template-columns: 365px 1fr;
+      gap: 10px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .side {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .mapping-scroll {
+      overflow: auto;
+      min-height: 0;
+      padding-right: 2px;
+    }
+
+    .file-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-2);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .file-card h3 {
+      margin: 0 0 6px;
       font-size: 13px;
-      background: white;
+      line-height: 1.3;
+      word-break: break-word;
     }
 
-    .filter-item:last-child { border-bottom: 0; }
-    .filter-item.active { background: #dbeafe; }
-    .filter-item .count { color: var(--muted); }
-
-    .small {
+    .file-card .meta {
       color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .mapping-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 6px;
+      align-items: center;
       font-size: 12px;
     }
 
-    .table-wrap {
-      overflow: auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      max-height: 720px;
-      margin-top: 12px;
-    }
-
-    table {
-      border-collapse: separate;
-      border-spacing: 0;
+    .mapping-grid select {
       width: 100%;
-      min-width: 1100px;
-      font-size: 13px;
+      min-width: 0;
+      padding: 5px 7px;
+      font-size: 12px;
     }
 
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid var(--border);
-      text-align: left;
-      vertical-align: top;
+    .warning {
+      margin-top: 8px;
+      padding: 7px 8px;
+      background: var(--yellow-bg);
+      border: 1px solid #fde68a;
+      color: var(--yellow);
+      border-radius: 8px;
+      font-size: 11px;
+    }
+
+    .results {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
       background: white;
     }
 
-    th {
-      background: #f8fafc;
-      color: #344054;
-      font-weight: 750;
-      position: sticky;
-      top: 0;
-      z-index: 2;
+    .pill.active {
+      background: var(--blue-bg);
+      border-color: var(--blue);
+      color: #174ea6;
+      font-weight: 700;
     }
 
-    tr:hover td { background: #fbfdff; }
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      min-height: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+      background: white;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: #f8fafc;
+      color: #344054;
+      font-weight: 760;
+    }
+
+    th:nth-child(1), td:nth-child(1) { width: 9%; }
+    th:nth-child(2), td:nth-child(2) { width: 12%; }
+    th:nth-child(3), td:nth-child(3) { width: 16%; }
+    th:nth-child(4), td:nth-child(4) { width: 16%; }
+    th:nth-child(5), td:nth-child(5) { width: 12%; }
+    th:nth-child(6), td:nth-child(6) { width: 22%; }
+    th:nth-child(7), td:nth-child(7) { width: 13%; }
+
+    tr:hover td {
+      background: #fbfdff;
+    }
 
     .badge {
       display: inline-block;
       border-radius: 999px;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 760;
+      padding: 3px 7px;
+      font-size: 10px;
+      font-weight: 780;
       white-space: nowrap;
     }
 
     .badge.doctor { background: var(--green-bg); color: var(--green); }
     .badge.patient { background: var(--orange-bg); color: var(--orange); }
     .badge.unknown { background: var(--gray-bg); color: var(--gray); }
-    .badge.problem { background: var(--red-bg); color: var(--red); }
+    .badge.exclude { background: var(--red-bg); color: var(--red); }
+    .badge.matched { background: #e0f2fe; color: #075985; }
+    .badge.unmatched { background: var(--gray-bg); color: var(--gray); }
 
-    .match-chip {
-      display: inline-block;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 2px 7px;
-      margin: 0 4px 4px 0;
-      background: #f9fafb;
+    .small {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .review-select {
+      width: 100%;
+      padding: 5px 6px;
+      font-size: 12px;
+    }
+
+    details {
+      margin-top: 4px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--blue);
+      font-size: 11px;
+    }
+
+    .kv {
+      margin: 2px 0;
+    }
+
+    .footer-note {
+      color: var(--muted);
       font-size: 11px;
       white-space: nowrap;
     }
 
-    .evidence div { margin-bottom: 4px; }
+    @media (max-width: 1050px) {
+      body { overflow: auto; }
+      header { height: auto; }
+      main { height: auto; overflow: visible; }
+      .workspace { grid-template-columns: 1fr; overflow: visible; }
+      .side, .results { overflow: visible; }
+      .mapping-scroll, .table-wrap { max-height: 70vh; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .topbar { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 <header>
   <h1>Tracker-Based Doctor / Patient Matcher</h1>
-  <p>
-    Select one tracker CSV, then upload other CSV exports. The app uses only
-    <code>user_data.is_doctor</code> from the tracker as ground truth and matches other files by email/name/surname.
-  </p>
+  <p>Static browser app. Select a tracker, map columns, match non-empty rows, review labels, and export original rows by effective label.</p>
 </header>
 
 <main>
   <section class="panel">
-    <div class="row">
-      <input id="files" type="file" multiple accept=".csv">
-      <label>
-        Tracker:
-        <select id="trackerSelect" disabled>
-          <option value="">Upload files first</option>
-        </select>
-      </label>
-      <button id="scan" class="primary">Load files</button>
-      <button id="run" class="primary" disabled>Run matching</button>
-      <button id="download" disabled>Download match report</button>
-      <button id="downloadNoPatients" disabled>Download input files: patients removed</button>
-      <button id="downloadDoctorsOnly" disabled>Download input files: doctors only</button>
-      <button id="reset" disabled>Reset filters</button>
-    </div>
-    <div class="hint">
-      The tracker should normally be <code>utenti_app.csv</code>. Export buttons generate cleaned versions of the non-tracker input files, preserving their original columns. Accepted doctor values:
-      <code>VERO</code>, <code>TRUE</code>, <code>1</code>, <code>YES</code>, <code>SI</code>.
-      Accepted patient/non-doctor values:
-      <code>FALSO</code>, <code>FALSE</code>, <code>0</code>, <code>NO</code>.
-    </div>
-  </section>
-
-  <section class="panel">
-    <div id="fileStatus" class="small">No files loaded.</div>
-  </section>
-
-  <section class="panel">
-    <div id="summary" class="summary-grid">
-      <div class="card"><div class="value">0</div><div class="label">Rows</div></div>
-    </div>
-  </section>
-
-  <section class="layout">
-    <aside class="panel sidebar">
-      <h3>Filters</h3>
-      <div class="small" style="margin-bottom: 10px;">Click a filter to inspect a subset of rows.</div>
-      <div id="filters" class="filter-list"></div>
-    </aside>
-
-    <section class="panel table-panel">
-      <div class="row" style="justify-content: space-between; align-items: flex-start;">
-        <div>
-          <h3>Results</h3>
-          <div id="tableInfo" class="small">No data yet.</div>
-        </div>
+    <div class="topbar">
+      <div>
         <div class="row">
-          <input id="search" type="search" placeholder="Search email, name, source, evidence..." disabled>
-          <select id="labelFilter" disabled>
-            <option value="">All labels</option>
-            <option value="DOCTOR_CERTAIN">DOCTOR_CERTAIN</option>
-            <option value="PATIENT_CERTAIN">PATIENT_CERTAIN</option>
-            <option value="UNKNOWN">UNKNOWN</option>
+          <input id="files" type="file" multiple accept=".csv">
+          <label>Tracker
+            <select id="trackerSelect" disabled><option value="">Upload files first</option></select>
+          </label>
+          <label>Fuzzy mode
+            <select id="fuzzyMode">
+              <option value="strict" selected>Strict</option>
+              <option value="normal">Normal</option>
+              <option value="permissive">Permissive</option>
+            </select>
+          </label>
+          <button id="scan" class="primary">Load files</button>
+          <button id="run" class="primary" disabled>Run matching</button>
+        </div>
+        <div class="hint">
+          Recommended columns: <code>email</code>, <code>first_name</code>, <code>last_name</code>, <code>full_name</code>.
+          Dirty headers are supported via column mapping. Empty rows are skipped. Downloads preserve original columns and use the current browser labels.
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button id="downloadReport" disabled>Report</button>
+        <button id="downloadCurrentView" disabled>Current view report</button>
+        <label>Original rows
+          <select id="exportMode" disabled>
+            <option value="current_view">Current view</option>
+            <option value="DOCTOR_CERTAIN">Effective DOCTOR_CERTAIN</option>
+            <option value="PATIENT_CERTAIN">Effective PATIENT_CERTAIN</option>
+            <option value="UNKNOWN">Effective UNKNOWN</option>
+            <option value="MATCHED">Matched rows</option>
+            <option value="UNMATCHED">Unmatched rows</option>
+            <option value="patients_removed">Patients removed</option>
+          </select>
+        </label>
+        <button id="downloadOriginal" disabled>Download original CSVs</button>
+        <button id="reset" disabled>Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary-grid" id="summary">
+    <div class="card"><div class="value">0</div><div class="label">Rows</div></div>
+  </section>
+
+  <section class="workspace">
+    <aside class="side">
+      <section class="panel">
+        <div class="row" style="justify-content:space-between">
+          <strong style="font-size:14px">File scope</strong>
+          <select id="fileFilter" disabled style="max-width:210px">
+            <option value="__INPUTS__">All input files</option>
           </select>
         </div>
+        <div class="small" id="fileStatus" style="margin-top:8px">No files loaded.</div>
+      </section>
+
+      <section class="panel mapping-scroll">
+        <strong style="font-size:14px">Column mapping</strong>
+        <div class="small" style="margin:4px 0 10px">Map dirty columns here. This does not rename exported files.</div>
+        <div id="mappingPanel"></div>
+      </section>
+    </aside>
+
+    <section class="panel results">
+      <div>
+        <div class="filters">
+          <div class="filter-pills" id="filterPills"></div>
+          <div class="row" style="justify-content:flex-end">
+            <input id="search" type="search" placeholder="Search rows..." disabled>
+            <select id="labelFilter" disabled>
+              <option value="">All effective labels</option>
+              <option value="DOCTOR_CERTAIN">DOCTOR_CERTAIN</option>
+              <option value="PATIENT_CERTAIN">PATIENT_CERTAIN</option>
+              <option value="UNKNOWN">UNKNOWN</option>
+              <option value="EXCLUDE">EXCLUDE</option>
+            </select>
+          </div>
+        </div>
+        <div class="footer-note" id="tableInfo" style="margin-top:6px">No data yet.</div>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Classification</th>
-              <th>Input contact</th>
-              <th>Matched tracker person</th>
+              <th>Status</th>
+              <th>Label / Review</th>
+              <th>Input row identity</th>
+              <th>Tracker match</th>
               <th>Match type</th>
-              <th>Evidence</th>
+              <th>Original row</th>
               <th>Source</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="6" class="small">Upload CSV files, select the tracker, then run matching.</td></tr>
+            <tr><td colspan="7" class="small">Upload CSV files, map columns if needed, then run matching.</td></tr>
           </tbody>
         </table>
       </div>
@@ -350,41 +505,27 @@
 (function () {
   "use strict";
 
-  const FIELD_ALIASES = {
-    email: [
-      "email", "email_lc", "e-mail", "indirizzo e-mail", "indirizzo email",
-      "email address", "mail"
-    ],
-    firstName: [
-      "first_name", "first name", "nome", "user_data.first_name",
-      "firstname", "given name"
-    ],
-    lastName: [
-      "last_name", "last name", "cognome", "user_data.last_name",
-      "lastname", "surname", "family name"
-    ],
-    fullName: [
-      "nome e cognome", "name", "full name", "customer name", "referente",
-      "contact name", "nominativo"
-    ],
-    isDoctor: [
-      "user_data.is_doctor"
-    ]
+  const TRUE_VALUES = new Set(["vero", "true", "1", "yes", "y", "si", "sì", "doctor", "medico", "dottore"]);
+  const FALSE_VALUES = new Set(["falso", "false", "0", "no", "n", "patient", "paziente"]);
+  const LABELS = ["DOCTOR_CERTAIN", "PATIENT_CERTAIN", "UNKNOWN", "EXCLUDE"];
+
+  const CANONICAL_FIELDS = ["email", "firstName", "lastName", "fullName", "isDoctor"];
+
+  const ALIASES = {
+    email: ["email", "email_lc", "e-mail", "indirizzo e-mail", "indirizzo email", "email address", "mail", "e_mail"],
+    firstName: ["first_name", "first name", "firstname", "nome", "given name", "forename"],
+    lastName: ["last_name", "last name", "lastname", "surname", "cognome", "family name", "last"],
+    fullName: ["nome e cognome", "full_name", "full name", "customer name", "referente", "contact name", "nominativo", "name and surname", "nome completo"],
+    isDoctor: ["user_data.is_doctor", "is_doctor", "is doctor"]
   };
-
-  const TRUE_VALUES = new Set([
-    "vero", "true", "1", "yes", "y", "si", "sì", "doctor", "medico", "dottore"
-  ]);
-
-  const FALSE_VALUES = new Set([
-    "falso", "false", "0", "no", "n", "non", "not", "patient", "paziente"
-  ]);
 
   let parsedFiles = [];
   let trackerFileIndex = -1;
+  let activeFile = "__INPUTS__";
+  let activeFilter = "";
   let allResults = [];
   let visibleResults = [];
-  let activeFilter = "";
+  let manualLabels = new Map();
 
   function norm(value) {
     return String(value ?? "")
@@ -401,55 +542,31 @@
   }
 
   function splitTokens(value) {
-    return norm(value)
-      .split(/\s+/)
-      .map(x => x.trim())
-      .filter(x => x.length >= 2);
+    return norm(value).split(/\s+/).map(x => x.trim()).filter(x => x.length >= 2);
   }
 
-  function getValue(row, canonicalName) {
-    const aliases = FIELD_ALIASES[canonicalName] || [canonicalName];
-    const keys = Object.keys(row);
-    for (const alias of aliases) {
-      const key = keys.find(k => norm(k) === norm(alias));
-      if (key && row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== "") {
-        return row[key];
-      }
+  function uniqueHeaders(rawHeaders, maxLen) {
+    const result = [];
+    const seen = new Map();
+    for (let i = 0; i < maxLen; i++) {
+      let base = String(rawHeaders[i] || `column_${i + 1}`).replace(/^\ufeff/, "").trim();
+      if (!base) base = `column_${i + 1}`;
+      const key = base;
+      const count = seen.get(key) || 0;
+      seen.set(key, count + 1);
+      result.push(count ? `${base}_${count + 1}` : base);
     }
-    return "";
+    return result;
   }
 
-  function getEmail(row) {
-    return compact(getValue(row, "email"));
-  }
-
-  function getFirstName(row) {
-    return norm(getValue(row, "firstName"));
-  }
-
-  function getLastName(row) {
-    return norm(getValue(row, "lastName"));
-  }
-
-  function getFullName(row) {
-    const explicit = getValue(row, "fullName");
-    const first = getValue(row, "firstName");
-    const last = getValue(row, "lastName");
-    return norm(explicit || `${first} ${last}`);
-  }
-
-  function classifyDoctorValue(value) {
-    const v = norm(value);
-    if (TRUE_VALUES.has(v)) return "DOCTOR_CERTAIN";
-    if (FALSE_VALUES.has(v)) return "PATIENT_CERTAIN";
-    return "UNKNOWN";
+  function rowIsEmpty(row, headers) {
+    return headers.every(h => String(row[h] ?? "").trim() === "");
   }
 
   function detectDelimiter(text) {
     const firstLine = text.split(/\r?\n/).find(l => l.trim()) || "";
     const candidates = [",", ";", "\t"];
-    let best = ",";
-    let bestCount = -1;
+    let best = ",", bestCount = -1;
     for (const d of candidates) {
       let count = 0, inQuotes = false;
       for (const c of firstLine) {
@@ -467,12 +584,11 @@
   function parseCSV(text) {
     text = text.replace(/^\ufeff/, "");
     const delimiter = detectDelimiter(text);
-    const rows = [];
+    const rawRows = [];
     let row = [], field = "", inQuotes = false;
 
     for (let i = 0; i < text.length; i++) {
-      const c = text[i];
-      const n = text[i + 1];
+      const c = text[i], n = text[i + 1];
 
       if (c === '"' && inQuotes && n === '"') {
         field += '"';
@@ -493,93 +609,167 @@
 
       if ((c === "\n" || c === "\r") && !inQuotes) {
         if (c === "\r" && n === "\n") i++;
-        row.push(field);
-        field = "";
-        if (row.some(v => String(v).trim() !== "")) rows.push(row);
+        rawRows.push(row.concat([field]));
         row = [];
+        field = "";
         continue;
       }
 
       field += c;
     }
 
-    row.push(field);
-    if (row.some(v => String(v).trim() !== "")) rows.push(row);
+    rawRows.push(row.concat([field]));
 
-    if (!rows.length) return { headers: [], rows: [], delimiter };
+    while (rawRows.length && rawRows[rawRows.length - 1].every(v => String(v ?? "").trim() === "")) {
+      rawRows.pop();
+    }
 
-    const headers = rows[0].map((h, i) => String(h || `column_${i + 1}`).trim());
-    const objects = rows.slice(1).map((r, idx) => {
+    if (!rawRows.length) {
+      return { headers: [], rows: [], skippedEmptyRows: 0, totalDataRows: 0, delimiter };
+    }
+
+    const maxLen = Math.max(...rawRows.map(r => r.length));
+    const headers = uniqueHeaders(rawRows[0], maxLen);
+    const rows = [];
+    let skippedEmptyRows = 0;
+
+    for (let i = 1; i < rawRows.length; i++) {
       const obj = {};
-      headers.forEach((h, i) => obj[h] = r[i] ?? "");
-      obj.__row_number = idx + 2;
-      return obj;
-    });
+      headers.forEach((h, j) => obj[h] = rawRows[i][j] ?? "");
+      obj.__row_number = i + 1;
 
-    return { headers, rows: objects, delimiter };
+      if (rowIsEmpty(obj, headers)) {
+        skippedEmptyRows++;
+        continue;
+      }
+
+      rows.push(obj);
+    }
+
+    return {
+      headers,
+      rows,
+      skippedEmptyRows,
+      totalDataRows: rawRows.length - 1,
+      delimiter
+    };
+  }
+
+  function classifyDoctorValue(value) {
+    const v = norm(value);
+    if (TRUE_VALUES.has(v)) return "DOCTOR_CERTAIN";
+    if (FALSE_VALUES.has(v)) return "PATIENT_CERTAIN";
+    return "UNKNOWN";
+  }
+
+  function headerMatches(header, aliases) {
+    const h = norm(header);
+    return aliases.some(a => h === norm(a));
+  }
+
+  function findHeader(headers, aliases) {
+    return headers.find(h => headerMatches(h, aliases)) || "";
+  }
+
+  function findHeaderByPredicate(headers, predicate) {
+    return headers.find(h => predicate(norm(h), h)) || "";
+  }
+
+  function autoMapFile(file) {
+    const headers = file.headers;
+    const email = findHeaderByPredicate(headers, h => h.includes("email") || h === "mail" || h.includes("e mail"));
+    const isDoctor = findHeader(headers, ALIASES.isDoctor);
+
+    const lastName = findHeader(headers, ALIASES.lastName);
+    let firstName = findHeader(headers, ALIASES.firstName);
+    let fullName = findHeader(headers, ALIASES.fullName);
+
+    const genericName = findHeaderByPredicate(headers, h => ["name", "nome"].includes(h));
+    const genericSurname = lastName;
+
+    if (!firstName && genericName && genericSurname) firstName = genericName;
+    if (!fullName && genericName && !genericSurname && !firstName) fullName = genericName;
+
+    return {
+      email,
+      firstName,
+      lastName,
+      fullName,
+      isDoctor
+    };
+  }
+
+  function getMappedValue(file, row, field) {
+    const header = file.mapping[field];
+    return header ? (row[header] ?? "") : "";
+  }
+
+  function getEmail(file, row) {
+    return compact(getMappedValue(file, row, "email"));
+  }
+
+  function getFirstName(file, row) {
+    return norm(getMappedValue(file, row, "firstName"));
+  }
+
+  function getLastName(file, row) {
+    return norm(getMappedValue(file, row, "lastName"));
+  }
+
+  function getFullName(file, row) {
+    const full = getMappedValue(file, row, "fullName");
+    const first = getMappedValue(file, row, "firstName");
+    const last = getMappedValue(file, row, "lastName");
+    return norm(full || `${first} ${last}`);
+  }
+
+  function getDoctorValue(file, row) {
+    return getMappedValue(file, row, "isDoctor");
+  }
+
+  function getDirtyRowText(file, row) {
+    return norm(file.headers.map(h => row[h]).filter(v => String(v ?? "").trim() !== "").join(" "));
+  }
+
+  function previewOriginal(file, row) {
+    const pairs = [];
+    for (const h of file.headers) {
+      const v = String(row[h] ?? "").trim();
+      if (v) pairs.push([h, v]);
+      if (pairs.length >= 7) break;
+    }
+    return pairs;
   }
 
   async function loadFiles(fileList) {
-    const out = [];
+    const files = [];
     for (const file of Array.from(fileList)) {
       if (!file.name.toLowerCase().endsWith(".csv")) {
-        throw new Error(`Unsupported file "${file.name}". Please export XLSX/XLS to CSV first.`);
+        throw new Error(`Unsupported file "${file.name}". Export XLS/XLSX to CSV first.`);
       }
+
       const text = await file.text();
       const parsed = parseCSV(text);
-      out.push({
+      const obj = {
         name: file.name,
         headers: parsed.headers,
         rows: parsed.rows,
-        delimiter: parsed.delimiter
-      });
+        skippedEmptyRows: parsed.skippedEmptyRows,
+        totalDataRows: parsed.totalDataRows,
+        delimiter: parsed.delimiter,
+        mapping: {}
+      };
+      obj.mapping = autoMapFile(obj);
+      files.push(obj);
     }
-    return out;
+    return files;
   }
 
-  function hasHeader(file, canonicalName) {
-    const aliases = FIELD_ALIASES[canonicalName] || [];
-    return file.headers.some(h => aliases.some(a => norm(h) === norm(a)));
-  }
-
-  function populateTrackerSelect() {
-    const select = document.getElementById("trackerSelect");
-    select.innerHTML = "";
-    parsedFiles.forEach((file, idx) => {
-      const opt = document.createElement("option");
-      opt.value = String(idx);
-      const hasDoctor = hasHeader(file, "isDoctor");
-      opt.textContent = `${file.name}${hasDoctor ? "  ✓ has user_data.is_doctor" : ""}`;
-      select.appendChild(opt);
-    });
-
-    const suggested = parsedFiles.findIndex(f => f.name.toLowerCase().includes("utenti_app"));
-    const withDoctor = parsedFiles.findIndex(f => hasHeader(f, "isDoctor"));
-    trackerFileIndex = suggested >= 0 ? suggested : withDoctor;
-    if (trackerFileIndex < 0 && parsedFiles.length) trackerFileIndex = 0;
-
-    select.value = String(trackerFileIndex);
-    select.disabled = false;
-    select.onchange = () => trackerFileIndex = Number(select.value);
-  }
-
-  function renderFileStatus() {
-    if (!parsedFiles.length) {
-      document.getElementById("fileStatus").textContent = "No files loaded.";
-      return;
-    }
-
-    const lines = parsedFiles.map((f, idx) => {
-      const signals = [];
-      if (hasHeader(f, "email")) signals.push("email");
-      if (hasHeader(f, "firstName")) signals.push("first name");
-      if (hasHeader(f, "lastName")) signals.push("last name");
-      if (hasHeader(f, "fullName")) signals.push("full name");
-      if (hasHeader(f, "isDoctor")) signals.push("user_data.is_doctor");
-      return `${idx === trackerFileIndex ? "TRACKER → " : ""}${f.name}: ${f.rows.length} rows; detected fields: ${signals.join(", ") || "none"}`;
-    });
-
-    document.getElementById("fileStatus").innerHTML = lines.map(escapeHtml).join("<br>");
+  function fuzzyThreshold() {
+    const mode = document.getElementById("fuzzyMode").value;
+    if (mode === "permissive") return 0.80;
+    if (mode === "normal") return 0.86;
+    return 0.90;
   }
 
   function buildTracker(trackerFile) {
@@ -587,11 +777,12 @@
     const byEmail = new Map();
 
     for (const row of trackerFile.rows) {
-      const email = getEmail(row);
-      const firstName = getFirstName(row);
-      const lastName = getLastName(row);
-      const fullName = getFullName(row);
-      const doctorValue = getValue(row, "isDoctor");
+      const email = getEmail(trackerFile, row);
+      const firstName = getFirstName(trackerFile, row);
+      const lastName = getLastName(trackerFile, row);
+      const fullName = getFullName(trackerFile, row);
+      const dirtyText = getDirtyRowText(trackerFile, row);
+      const doctorValue = getDoctorValue(trackerFile, row);
       const label = classifyDoctorValue(doctorValue);
 
       const person = {
@@ -602,6 +793,7 @@
         firstName,
         lastName,
         fullName,
+        dirtyText,
         nameTokens: splitTokens(fullName || `${firstName} ${lastName}`),
         doctorValue,
         label
@@ -626,12 +818,12 @@
     const s2Matches = new Array(len2).fill(false);
 
     let matches = 0;
+
     for (let i = 0; i < len1; i++) {
       const start = Math.max(0, i - matchDistance);
       const end = Math.min(i + matchDistance + 1, len2);
       for (let j = start; j < end; j++) {
-        if (s2Matches[j]) continue;
-        if (s1[i] !== s2[j]) continue;
+        if (s2Matches[j] || s1[i] !== s2[j]) continue;
         s1Matches[i] = true;
         s2Matches[j] = true;
         matches++;
@@ -663,20 +855,22 @@
 
   function tokenOverlapScore(tokensA, tokensB) {
     if (!tokensA.length || !tokensB.length) return 0;
-    const setA = new Set(tokensA);
-    const setB = new Set(tokensB);
+    const a = new Set(tokensA);
+    const b = new Set(tokensB);
     let intersection = 0;
-    for (const t of setA) if (setB.has(t)) intersection++;
-    return intersection / Math.max(setA.size, setB.size);
+    for (const t of a) if (b.has(t)) intersection++;
+    return intersection / Math.max(a.size, b.size);
   }
 
-  function findBestTrackerMatch(row, tracker) {
-    const email = getEmail(row);
-    const firstName = getFirstName(row);
-    const lastName = getLastName(row);
-    const fullName = getFullName(row);
+  function findBestTrackerMatch(file, row, tracker) {
+    const email = getEmail(file, row);
+    const firstName = getFirstName(file, row);
+    const lastName = getLastName(file, row);
+    const fullName = getFullName(file, row);
+    const dirtyText = getDirtyRowText(file, row);
     const inputName = fullName || norm(`${firstName} ${lastName}`);
-    const inputTokens = splitTokens(inputName);
+    const inputTokens = splitTokens(inputName || dirtyText);
+    const threshold = fuzzyThreshold();
 
     if (email && tracker.byEmail.has(email)) {
       const person = tracker.byEmail.get(email);
@@ -684,6 +878,7 @@
         person,
         score: 1,
         matchType: "EXACT_EMAIL",
+        status: "MATCHED",
         evidence: [`Exact email match: ${email}`]
       };
     }
@@ -691,43 +886,60 @@
     let best = null;
 
     for (const person of tracker.people) {
+      const trackerName = person.fullName || norm(`${person.firstName} ${person.lastName}`);
       let score = 0;
       const evidence = [];
       const matchParts = [];
 
-      if (inputName && person.fullName) {
-        const nameSim = jaroWinkler(inputName, person.fullName);
-        if (nameSim > score) score = nameSim;
-        if (nameSim >= 0.90) {
-          evidence.push(`Fuzzy full-name match ${nameSim.toFixed(2)}: "${inputName}" ↔ "${person.fullName}"`);
+      if (inputName && trackerName) {
+        const s = jaroWinkler(inputName, trackerName);
+        score = Math.max(score, s);
+        if (s >= 0.90) {
+          evidence.push(`Fuzzy full-name match ${s.toFixed(2)}: "${inputName}" ↔ "${trackerName}"`);
           matchParts.push("FUZZY_FULL_NAME");
         }
       }
 
       if (firstName && lastName && person.firstName && person.lastName) {
-        const firstSim = jaroWinkler(firstName, person.firstName);
-        const lastSim = jaroWinkler(lastName, person.lastName);
-        const combo = (firstSim + lastSim) / 2;
-        if (combo > score) score = combo;
-        if (firstSim >= 0.88 && lastSim >= 0.88) {
-          evidence.push(`Fuzzy first/last match: first=${firstSim.toFixed(2)}, last=${lastSim.toFixed(2)}`);
+        const s1 = jaroWinkler(firstName, person.firstName);
+        const s2 = jaroWinkler(lastName, person.lastName);
+        const combo = (s1 + s2) / 2;
+        score = Math.max(score, combo);
+        if (s1 >= 0.88 && s2 >= 0.88) {
+          evidence.push(`Fuzzy first/last match: first=${s1.toFixed(2)}, last=${s2.toFixed(2)}`);
           matchParts.push("FUZZY_FIRST_LAST");
         }
       }
 
-      const overlap = tokenOverlapScore(inputTokens, person.nameTokens);
-      if (overlap > score) score = Math.max(score, overlap * 0.96);
-      if (overlap >= 0.75) {
-        evidence.push(`Name token overlap ${(overlap).toFixed(2)}: "${inputName}" ↔ "${person.fullName}"`);
-        matchParts.push("TOKEN_NAME_OVERLAP");
+      if (inputTokens.length && person.nameTokens.length) {
+        const overlap = tokenOverlapScore(inputTokens, person.nameTokens);
+        const overlapScore = overlap * 0.96;
+        score = Math.max(score, overlapScore);
+        if (overlap >= 0.75) {
+          evidence.push(`Name token overlap ${overlap.toFixed(2)}: "${inputName || dirtyText}" ↔ "${trackerName}"`);
+          matchParts.push("TOKEN_NAME_OVERLAP");
+        }
       }
 
-      // Email local-part vs tracker name as weak support.
+      if (!inputName && dirtyText && trackerName && dirtyText.length <= 120) {
+        const s = jaroWinkler(dirtyText, trackerName);
+        score = Math.max(score, s);
+        if (s >= 0.92) {
+          evidence.push(`Dirty row-text fuzzy match ${s.toFixed(2)}: "${dirtyText}" ↔ "${trackerName}"`);
+          matchParts.push("DIRTY_ROW_TEXT_FUZZY");
+        }
+      }
+
+      if (inputName && dirtyText && trackerName && dirtyText.includes(trackerName) && trackerName.length >= 5) {
+        score = Math.max(score, 0.93);
+        evidence.push(`Row text contains tracker name: "${trackerName}"`);
+        matchParts.push("ROW_TEXT_CONTAINS_NAME");
+      }
+
       if (email && person.nameTokens.length) {
         const local = email.split("@")[0].replace(/[._+\-0-9]/g, " ");
-        const localTokens = splitTokens(local);
-        const localOverlap = tokenOverlapScore(localTokens, person.nameTokens);
-        if (localOverlap >= 0.75) {
+        const overlap = tokenOverlapScore(splitTokens(local), person.nameTokens);
+        if (overlap >= 0.75) {
           score = Math.max(score, 0.88);
           evidence.push(`Email local-part resembles tracker name: ${local}`);
           matchParts.push("EMAIL_LOCAL_NAME");
@@ -744,25 +956,32 @@
       }
     }
 
-    if (!best || best.score < 0.86) {
+    if (!best || best.score < threshold) {
       return {
         person: null,
         score: best ? best.score : 0,
         matchType: "NO_MATCH",
+        status: "UNMATCHED",
         evidence: best && best.score > 0
-          ? [`Best fuzzy score too low: ${best.score.toFixed(2)}${best.person ? ` with "${best.person.fullName}"` : ""}`]
+          ? [`Best fuzzy score too low for ${document.getElementById("fuzzyMode").value} mode: ${best.score.toFixed(2)}${best.person ? ` with "${best.person.fullName}"` : ""}`]
           : ["No reliable tracker match found."]
       };
     }
 
-    return best;
+    return {
+      person: best.person,
+      score: best.score,
+      matchType: best.matchType,
+      status: "MATCHED",
+      evidence: best.evidence.length ? best.evidence : [`Fuzzy match accepted with score ${best.score.toFixed(2)}.`]
+    };
   }
 
   function classifyAll() {
     const trackerFile = parsedFiles[trackerFileIndex];
     if (!trackerFile) throw new Error("Select a tracker file.");
-    if (!hasHeader(trackerFile, "isDoctor")) {
-      throw new Error(`Selected tracker "${trackerFile.name}" does not contain user_data.is_doctor.`);
+    if (!trackerFile.mapping.isDoctor) {
+      throw new Error(`Selected tracker "${trackerFile.name}" has no mapped user_data.is_doctor column. Map it in the left panel.`);
     }
 
     const tracker = buildTracker(trackerFile);
@@ -772,30 +991,33 @@
       for (const row of file.rows) {
         const isTrackerRow = file === trackerFile;
         let matched;
+
         if (isTrackerRow) {
           const person = {
             source_file: file.name,
             row_number: row.__row_number,
             row,
-            email: getEmail(row),
-            firstName: getFirstName(row),
-            lastName: getLastName(row),
-            fullName: getFullName(row),
-            doctorValue: getValue(row, "isDoctor"),
-            label: classifyDoctorValue(getValue(row, "isDoctor"))
+            email: getEmail(file, row),
+            firstName: getFirstName(file, row),
+            lastName: getLastName(file, row),
+            fullName: getFullName(file, row),
+            doctorValue: getDoctorValue(file, row),
+            label: classifyDoctorValue(getDoctorValue(file, row))
           };
+
           matched = {
             person,
             score: 1,
             matchType: "TRACKER_SELF",
+            status: "MATCHED",
             evidence: ["This row comes from the selected tracker file."]
           };
         } else {
-          matched = findBestTrackerMatch(row, tracker);
+          matched = findBestTrackerMatch(file, row, tracker);
         }
 
         const person = matched.person;
-        const label = person ? person.label : "UNKNOWN";
+        const suggested = person ? person.label : "UNKNOWN";
         const confidence = person
           ? (matched.matchType === "EXACT_EMAIL" || matched.matchType === "TRACKER_SELF" ? 1 : Number(matched.score.toFixed(3)))
           : Number((matched.score || 0).toFixed(3));
@@ -805,20 +1027,22 @@
           source_file: file.name,
           row_number: row.__row_number,
           is_tracker_row: isTrackerRow,
-          input_email: getEmail(row),
-          input_name: getFullName(row) || norm(`${getFirstName(row)} ${getLastName(row)}`),
-          input_first_name: getFirstName(row),
-          input_last_name: getLastName(row),
+          input_email: getEmail(file, row),
+          input_name: getFullName(file, row) || norm(`${getFirstName(file, row)} ${getLastName(file, row)}`),
+          dirty_text: getDirtyRowText(file, row),
           matched_email: person ? person.email : "",
           matched_name: person ? person.fullName : "",
           matched_first_name: person ? person.firstName : "",
           matched_last_name: person ? person.lastName : "",
           tracker_doctor_value: person ? person.doctorValue : "",
-          label,
+          suggested_label: suggested,
           confidence,
           match_type: matched.matchType,
+          match_status: matched.status,
           evidence: matched.evidence,
-          original: row
+          original: row,
+          original_preview: previewOriginal(file, row),
+          headers: file.headers
         });
       }
     }
@@ -826,93 +1050,69 @@
     return results;
   }
 
-  function counts() {
-    const c = {
-      total: allResults.length,
-      visible: visibleResults.length,
-      doctors: allResults.filter(r => r.label === "DOCTOR_CERTAIN").length,
-      patients: allResults.filter(r => r.label === "PATIENT_CERTAIN").length,
-      unknown: allResults.filter(r => r.label === "UNKNOWN").length,
-      exactEmail: allResults.filter(r => r.match_type === "EXACT_EMAIL").length,
-      fuzzy: allResults.filter(r => r.match_type.includes("FUZZY") || r.match_type.includes("TOKEN") || r.match_type.includes("EMAIL_LOCAL")).length,
-      noMatch: allResults.filter(r => r.match_type === "NO_MATCH").length
-    };
-    return c;
+  function effectiveLabel(result) {
+    return manualLabels.get(result.id) || result.suggested_label;
   }
 
-  function renderSummary() {
-    const c = counts();
-    const cards = [
-      ["Rows", c.total],
-      ["Visible", c.visible],
-      ["Doctors certain", c.doctors],
-      ["Patients certain", c.patients],
-      ["Unknown", c.unknown],
-      ["Exact email matches", c.exactEmail],
-      ["Fuzzy/name matches", c.fuzzy],
-      ["No match", c.noMatch]
-    ];
-    document.getElementById("summary").innerHTML = cards.map(([label, value]) => `
-      <div class="card"><div class="value">${escapeHtml(value)}</div><div class="label">${escapeHtml(label)}</div></div>
-    `).join("");
+  function fileInScope(result) {
+    if (activeFile === "__ALL__") return true;
+    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
+    return result.source_file === activeFile;
+  }
+
+  function scopedResults() {
+    return allResults.filter(fileInScope);
+  }
+
+  function isFuzzy(result) {
+    return result.match_type.includes("FUZZY") ||
+           result.match_type.includes("TOKEN") ||
+           result.match_type.includes("EMAIL_LOCAL") ||
+           result.match_type.includes("ROW_TEXT");
   }
 
   function filterDefinitions() {
     return [
-      ["", "All rows", r => true],
-      ["DOCTOR_CERTAIN", "Doctors certain", r => r.label === "DOCTOR_CERTAIN"],
-      ["PATIENT_CERTAIN", "Patients certain", r => r.label === "PATIENT_CERTAIN"],
-      ["UNKNOWN", "Unknown / unmatched", r => r.label === "UNKNOWN"],
-      ["EXACT_EMAIL", "Exact email matches", r => r.match_type === "EXACT_EMAIL"],
-      ["FUZZY", "Fuzzy/name matches", r => r.match_type.includes("FUZZY") || r.match_type.includes("TOKEN") || r.match_type.includes("EMAIL_LOCAL")],
-      ["NO_MATCH", "No reliable match", r => r.match_type === "NO_MATCH"],
-      ["TRACKER_SELF", "Tracker rows", r => r.match_type === "TRACKER_SELF"],
-      ["OTHER_FILES", "Only non-tracker files", r => !r.is_tracker_row]
+      ["", "All", r => true],
+      ["MATCHED", "Matched", r => r.match_status === "MATCHED"],
+      ["UNMATCHED", "Unmatched", r => r.match_status === "UNMATCHED"],
+      ["DOCTOR_CERTAIN", "Doctors", r => effectiveLabel(r) === "DOCTOR_CERTAIN"],
+      ["PATIENT_CERTAIN", "Patients", r => effectiveLabel(r) === "PATIENT_CERTAIN"],
+      ["UNKNOWN", "Unknown", r => effectiveLabel(r) === "UNKNOWN"],
+      ["EXCLUDE", "Excluded", r => effectiveLabel(r) === "EXCLUDE"],
+      ["EDITED", "Edited", r => manualLabels.has(r.id)],
+      ["EXACT_EMAIL", "Exact email", r => r.match_type === "EXACT_EMAIL"],
+      ["FUZZY", "Fuzzy", r => isFuzzy(r)]
     ];
-  }
-
-  function renderFilters() {
-    const defs = filterDefinitions();
-    document.getElementById("filters").innerHTML = defs.map(([key, label, fn]) => {
-      const count = allResults.filter(fn).length;
-      return `
-        <div class="filter-item ${activeFilter === key ? "active" : ""}" data-filter="${escapeHtml(key)}">
-          <span>${escapeHtml(label)}</span>
-          <span class="count">${count}</span>
-        </div>
-      `;
-    }).join("");
-
-    document.querySelectorAll(".filter-item").forEach(el => {
-      el.onclick = () => {
-        activeFilter = el.dataset.filter;
-        applyFilters();
-      };
-    });
   }
 
   function applyFilters() {
     const q = norm(document.getElementById("search").value);
-    const selectedLabel = document.getElementById("labelFilter").value;
-    const activeDef = filterDefinitions().find(([key]) => key === activeFilter);
+    const label = document.getElementById("labelFilter").value;
+    const activeDef = filterDefinitions().find(([k]) => k === activeFilter);
     const activeFn = activeDef ? activeDef[2] : (() => true);
 
     visibleResults = allResults.filter(r => {
+      if (!fileInScope(r)) return false;
       if (!activeFn(r)) return false;
-      if (selectedLabel && r.label !== selectedLabel) return false;
+      if (label && effectiveLabel(r) !== label) return false;
+
       if (q) {
-        const haystack = norm([
+        const text = norm([
           r.source_file,
           r.input_email,
           r.input_name,
+          r.dirty_text,
           r.matched_email,
           r.matched_name,
-          r.label,
+          r.suggested_label,
+          effectiveLabel(r),
           r.match_type,
           r.evidence.join(" ")
         ].join(" "));
-        if (!haystack.includes(q)) return false;
+        if (!text.includes(q)) return false;
       }
+
       return true;
     });
 
@@ -921,112 +1121,371 @@
     renderTable();
   }
 
-  function badgeClass(label) {
+  function renderSummary() {
+    const scope = scopedResults();
+    const counts = {
+      rows: scope.length,
+      visible: visibleResults.length,
+      matched: scope.filter(r => r.match_status === "MATCHED").length,
+      unmatched: scope.filter(r => r.match_status === "UNMATCHED").length,
+      doctors: scope.filter(r => effectiveLabel(r) === "DOCTOR_CERTAIN").length,
+      patients: scope.filter(r => effectiveLabel(r) === "PATIENT_CERTAIN").length,
+      unknown: scope.filter(r => effectiveLabel(r) === "UNKNOWN").length,
+      edited: scope.filter(r => manualLabels.has(r.id)).length,
+      emptySkipped: parsedFiles.reduce((a, f) => a + f.skippedEmptyRows, 0),
+      fuzzy: scope.filter(isFuzzy).length
+    };
+
+    const cards = [
+      ["Rows", counts.rows],
+      ["Visible", counts.visible],
+      ["Matched", counts.matched],
+      ["Unmatched", counts.unmatched],
+      ["Doctors", counts.doctors],
+      ["Patients", counts.patients],
+      ["Unknown", counts.unknown],
+      ["Edited", counts.edited],
+      ["Empty skipped", counts.emptySkipped],
+      ["Fuzzy", counts.fuzzy]
+    ];
+
+    document.getElementById("summary").innerHTML = cards.map(([label, value]) => `
+      <div class="card"><div class="value">${escapeHtml(value)}</div><div class="label">${escapeHtml(label)}</div></div>
+    `).join("");
+  }
+
+  function renderFilters() {
+    const scope = scopedResults();
+    const html = filterDefinitions().map(([key, label, fn]) => {
+      const count = scope.filter(fn).length;
+      return `<span class="pill ${activeFilter === key ? "active" : ""}" data-filter="${escapeHtml(key)}">${escapeHtml(label)} ${count}</span>`;
+    }).join("");
+
+    document.getElementById("filterPills").innerHTML = html;
+    document.querySelectorAll(".pill").forEach(el => {
+      el.onclick = () => {
+        activeFilter = el.dataset.filter;
+        applyFilters();
+      };
+    });
+  }
+
+  function labelClass(label) {
     if (label === "DOCTOR_CERTAIN") return "doctor";
     if (label === "PATIENT_CERTAIN") return "patient";
-    if (label === "UNKNOWN") return "unknown";
-    return "problem";
+    if (label === "EXCLUDE") return "exclude";
+    return "unknown";
   }
 
   function renderTable() {
     const tbody = document.getElementById("tbody");
-    document.getElementById("tableInfo").textContent = `${visibleResults.length} visible rows out of ${allResults.length}.`;
+    document.getElementById("tableInfo").textContent =
+      `${visibleResults.length} visible rows. File scope: ${activeFileLabel()}. Downloads use effective labels.`;
 
     if (!visibleResults.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="small">No rows match the current filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="small">No rows match this view. If you export, the CSV will contain an explanation row.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = visibleResults.map(r => `
-      <tr>
-        <td>
-          <span class="badge ${badgeClass(r.label)}">${escapeHtml(r.label)}</span>
-          <div class="small">confidence ${escapeHtml(r.confidence)}</div>
-          <div class="small">tracker value: ${escapeHtml(r.tracker_doctor_value)}</div>
-        </td>
-        <td>
-          <strong>${escapeHtml(r.input_name || "(no name)")}</strong>
-          <div>${escapeHtml(r.input_email || "")}</div>
-          <div class="small">${escapeHtml([r.input_first_name, r.input_last_name].filter(Boolean).join(" "))}</div>
-        </td>
-        <td>
-          <strong>${escapeHtml(r.matched_name || "")}</strong>
-          <div>${escapeHtml(r.matched_email || "")}</div>
-          <div class="small">${escapeHtml([r.matched_first_name, r.matched_last_name].filter(Boolean).join(" "))}</div>
-        </td>
-        <td>
-          <span class="match-chip">${escapeHtml(r.match_type)}</span>
-        </td>
-        <td class="evidence">
-          ${r.evidence.map(e => `<div>• ${escapeHtml(e)}</div>`).join("")}
-        </td>
-        <td>
-          ${escapeHtml(r.source_file)}
-          <div class="small">row ${escapeHtml(r.row_number)}</div>
-        </td>
-      </tr>
-    `).join("");
+    tbody.innerHTML = visibleResults.map(r => {
+      const effective = effectiveLabel(r);
+      const manual = manualLabels.get(r.id) || "";
+      const preview = r.original_preview.map(([h, v]) => `<div class="kv"><strong>${escapeHtml(h)}:</strong> ${escapeHtml(v)}</div>`).join("");
+      const evidence = r.evidence.map(e => `<div class="kv">• ${escapeHtml(e)}</div>`).join("");
+
+      return `
+        <tr>
+          <td>
+            <span class="badge ${r.match_status === "MATCHED" ? "matched" : "unmatched"}">${escapeHtml(r.match_status)}</span>
+            <div class="small">${escapeHtml(r.confidence)}</div>
+          </td>
+          <td>
+            <span class="badge ${labelClass(r.suggested_label)}">${escapeHtml(r.suggested_label)}</span>
+            <select class="review-select" data-review-id="${escapeHtml(r.id)}">
+              <option value="" ${manual === "" ? "selected" : ""}>Use suggestion</option>
+              ${LABELS.map(l => `<option value="${l}" ${manual === l ? "selected" : ""}>${l}</option>`).join("")}
+            </select>
+            <div style="margin-top:4px"><span class="badge ${labelClass(effective)}">effective: ${escapeHtml(effective)}</span></div>
+          </td>
+          <td>
+            <strong>${escapeHtml(r.input_name || "(no mapped name)")}</strong>
+            <div>${escapeHtml(r.input_email || "")}</div>
+            <details><summary>row text</summary><div class="small">${escapeHtml(r.dirty_text || "")}</div></details>
+          </td>
+          <td>
+            <strong>${escapeHtml(r.matched_name || "")}</strong>
+            <div>${escapeHtml(r.matched_email || "")}</div>
+            <div class="small">tracker value: ${escapeHtml(r.tracker_doctor_value || "")}</div>
+          </td>
+          <td>${escapeHtml(r.match_type)}</td>
+          <td>
+            <details open><summary>preview</summary>${preview || '<span class="small">No previewable values</span>'}</details>
+            <details><summary>evidence</summary>${evidence}</details>
+          </td>
+          <td>
+            ${escapeHtml(r.source_file)}
+            <div class="small">row ${escapeHtml(r.row_number)}</div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    document.querySelectorAll("select[data-review-id]").forEach(sel => {
+      sel.onchange = () => {
+        if (sel.value) manualLabels.set(sel.dataset.reviewId, sel.value);
+        else manualLabels.delete(sel.dataset.reviewId);
+        applyFilters();
+      };
+    });
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  function activeFileLabel() {
+    if (activeFile === "__INPUTS__") return "all input files";
+    if (activeFile === "__ALL__") return "all files";
+    return activeFile;
+  }
+
+  function renderFileStatus() {
+    if (!parsedFiles.length) {
+      document.getElementById("fileStatus").textContent = "No files loaded.";
+      return;
+    }
+
+    const tracker = parsedFiles[trackerFileIndex];
+    const msg = parsedFiles.map((f, idx) => {
+      const mapped = Object.entries(f.mapping)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ") || "none";
+      const tag = f === tracker ? "TRACKER" : "INPUT";
+      return `<div><strong>${escapeHtml(tag)} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty rows · ${f.skippedEmptyRows} empty skipped · mapped: ${escapeHtml(mapped)}</div>`;
+    }).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");
+
+    document.getElementById("fileStatus").innerHTML = msg;
+  }
+
+  function renderMappingPanel() {
+    const tracker = parsedFiles[trackerFileIndex];
+
+    document.getElementById("mappingPanel").innerHTML = parsedFiles.map((file, fileIndex) => {
+      const isTracker = file === tracker;
+      const fields = isTracker ? CANONICAL_FIELDS : CANONICAL_FIELDS.filter(f => f !== "isDoctor");
+
+      const fieldRows = fields.map(field => {
+        const label = field === "firstName" ? "first" :
+                      field === "lastName" ? "last" :
+                      field === "fullName" ? "full" :
+                      field === "isDoctor" ? "doctor?" : field;
+        return `
+          <label>${escapeHtml(label)}</label>
+          <select data-file-index="${fileIndex}" data-field="${field}">
+            <option value="">— none —</option>
+            ${file.headers.map(h => `<option value="${escapeHtml(h)}" ${file.mapping[field] === h ? "selected" : ""}>${escapeHtml(h)}</option>`).join("")}
+          </select>
+        `;
+      }).join("");
+
+      const warning = (!file.mapping.email && !file.mapping.firstName && !file.mapping.lastName && !file.mapping.fullName)
+        ? `<div class="warning">No identity fields mapped. Matching will only use dirty row text.</div>`
+        : "";
+
+      const trackerWarning = isTracker && !file.mapping.isDoctor
+        ? `<div class="warning">Tracker needs a mapped <code>user_data.is_doctor</code> column.</div>`
+        : "";
+
+      return `
+        <div class="file-card">
+          <h3>${escapeHtml(isTracker ? "TRACKER · " : "INPUT · ")}${escapeHtml(file.name)}</h3>
+          <div class="meta">${file.rows.length} non-empty rows · ${file.skippedEmptyRows} empty skipped</div>
+          <div class="mapping-grid">${fieldRows}</div>
+          ${warning}
+          ${trackerWarning}
+        </div>
+      `;
+    }).join("");
+
+    document.querySelectorAll("#mappingPanel select[data-file-index]").forEach(sel => {
+      sel.onchange = () => {
+        const file = parsedFiles[Number(sel.dataset.fileIndex)];
+        file.mapping[sel.dataset.field] = sel.value;
+        renderFileStatus();
+      };
+    });
+  }
+
+  function populateTrackerSelect() {
+    const select = document.getElementById("trackerSelect");
+    select.innerHTML = "";
+
+    parsedFiles.forEach((file, idx) => {
+      const opt = document.createElement("option");
+      opt.value = String(idx);
+      opt.textContent = `${file.name}${file.mapping.isDoctor ? " ✓ doctor field" : ""}`;
+      select.appendChild(opt);
+    });
+
+    const utenti = parsedFiles.findIndex(f => f.name.toLowerCase().includes("utenti_app"));
+    const withDoctor = parsedFiles.findIndex(f => f.mapping.isDoctor);
+    trackerFileIndex = utenti >= 0 ? utenti : withDoctor;
+    if (trackerFileIndex < 0 && parsedFiles.length) trackerFileIndex = 0;
+
+    select.value = String(trackerFileIndex);
+    select.disabled = false;
+    select.onchange = () => {
+      trackerFileIndex = Number(select.value);
+      renderMappingPanel();
+      renderFileStatus();
+      populateFileFilter();
+      applyFilters();
+    };
+  }
+
+  function populateFileFilter() {
+    const select = document.getElementById("fileFilter");
+    select.innerHTML = `
+      <option value="__INPUTS__">All input files</option>
+      <option value="__ALL__">All files incl. tracker</option>
+    `;
+
+    parsedFiles.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.name;
+      opt.textContent = f.name;
+      select.appendChild(opt);
+    });
+
+    activeFile = "__INPUTS__";
+    select.value = activeFile;
+    select.disabled = false;
+    select.onchange = () => {
+      activeFile = select.value;
+      applyFilters();
+    };
+  }
+
+  function scopeFilesForExport() {
+    const tracker = parsedFiles[trackerFileIndex];
+    if (activeFile === "__ALL__") return parsedFiles.slice();
+    if (activeFile === "__INPUTS__") return parsedFiles.filter(f => f !== tracker);
+    return parsedFiles.filter(f => f.name === activeFile);
+  }
+
+  function rowsForExportMode(mode) {
+    if (mode === "current_view") return visibleResults.slice();
+
+    return allResults.filter(r => {
+      if (!fileInExportScope(r)) return false;
+
+      if (mode === "DOCTOR_CERTAIN" || mode === "PATIENT_CERTAIN" || mode === "UNKNOWN") {
+        return effectiveLabel(r) === mode;
+      }
+
+      if (mode === "MATCHED") return r.match_status === "MATCHED";
+      if (mode === "UNMATCHED") return r.match_status === "UNMATCHED";
+
+      if (mode === "patients_removed") {
+        return effectiveLabel(r) !== "PATIENT_CERTAIN" && effectiveLabel(r) !== "EXCLUDE";
+      }
+
+      return false;
+    });
+  }
+
+  function fileInExportScope(result) {
+    if (activeFile === "__ALL__") return true;
+    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
+    return result.source_file === activeFile;
+  }
+
+  function serializeOriginalRows(file, rows, message) {
+    const headers = file.headers.length ? file.headers.slice() : [];
+    if (message) {
+      const finalHeaders = headers.includes("__message") ? headers : headers.concat(["__message"]);
+      const blank = Object.fromEntries(finalHeaders.map(h => [h, ""]));
+      blank.__message = message;
+      return [
+        finalHeaders.map(csvEscape).join(","),
+        finalHeaders.map(h => csvEscape(blank[h] ?? "")).join(",")
+      ].join("\n");
+    }
+
+    return [
+      headers.map(csvEscape).join(","),
+      ...rows.map(r => headers.map(h => csvEscape(r.original[h] ?? "")).join(","))
+    ].join("\n");
+  }
+
+  function downloadOriginalRows(mode) {
+    const files = scopeFilesForExport();
+    if (!files.length) {
+      alert("No files in the selected export scope.");
+      return;
+    }
+
+    const rows = rowsForExportMode(mode);
+
+    for (const file of files) {
+      const fileRows = rows.filter(r => r.source_file === file.name);
+      const message = fileRows.length
+        ? null
+        : `No rows exported from ${file.name}. Export mode: ${mode}. File scope: ${activeFileLabel()}. Empty input rows were skipped before matching.`;
+      const csv = serializeOriginalRows(file, fileRows, message);
+      const suffix = mode.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+      const base = file.name.replace(/\.csv$/i, "");
+      downloadText(`${base}_${suffix || "export"}.csv`, csv);
+    }
+  }
+
+  function exportReportCSV(rows) {
+    const cols = [
+      "source_file", "row_number", "match_status",
+      "suggested_label", "user_label", "effective_label",
+      "confidence", "match_type",
+      "input_email", "input_name", "dirty_row_text",
+      "matched_tracker_email", "matched_tracker_name",
+      "tracker_user_data_is_doctor", "evidence"
+    ];
+
+    const lines = [cols.join(",")];
+
+    if (!rows.length) {
+      const empty = Object.fromEntries(cols.map(c => [c, ""]));
+      empty.evidence = "No rows match this report/export view.";
+      lines.push(cols.map(c => csvEscape(empty[c])).join(","));
+      return lines.join("\n");
+    }
+
+    for (const r of rows) {
+      const obj = {
+        source_file: r.source_file,
+        row_number: r.row_number,
+        match_status: r.match_status,
+        suggested_label: r.suggested_label,
+        user_label: manualLabels.get(r.id) || "",
+        effective_label: effectiveLabel(r),
+        confidence: r.confidence,
+        match_type: r.match_type,
+        input_email: r.input_email,
+        input_name: r.input_name,
+        dirty_row_text: r.dirty_text,
+        matched_tracker_email: r.matched_email,
+        matched_tracker_name: r.matched_name,
+        tracker_user_data_is_doctor: r.tracker_doctor_value,
+        evidence: r.evidence.join(" | ")
+      };
+
+      lines.push(cols.map(c => csvEscape(obj[c])).join(","));
+    }
+
+    return lines.join("\n");
   }
 
   function csvEscape(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
 
-  function exportCSV(rows) {
-    const cols = [
-      "label",
-      "confidence",
-      "match_type",
-      "input_email",
-      "input_name",
-      "input_first_name",
-      "input_last_name",
-      "matched_tracker_email",
-      "matched_tracker_name",
-      "matched_tracker_first_name",
-      "matched_tracker_last_name",
-      "tracker_user_data_is_doctor",
-      "evidence",
-      "source_file",
-      "row_number",
-      "is_tracker_row"
-    ];
-
-    const lines = [cols.join(",")];
-    for (const r of rows) {
-      const obj = {
-        label: r.label,
-        confidence: r.confidence,
-        match_type: r.match_type,
-        input_email: r.input_email,
-        input_name: r.input_name,
-        input_first_name: r.input_first_name,
-        input_last_name: r.input_last_name,
-        matched_tracker_email: r.matched_email,
-        matched_tracker_name: r.matched_name,
-        matched_tracker_first_name: r.matched_first_name,
-        matched_tracker_last_name: r.matched_last_name,
-        tracker_user_data_is_doctor: r.tracker_doctor_value,
-        evidence: r.evidence.join(" | "),
-        source_file: r.source_file,
-        row_number: r.row_number,
-        is_tracker_row: r.is_tracker_row
-      };
-      lines.push(cols.map(c => csvEscape(obj[c])).join(","));
-    }
-    return lines.join("\n");
-  }
-
-  function downloadFile(filename, content) {
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  function downloadText(filename, content, mime = "text/csv;charset=utf-8") {
+    const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1035,6 +1494,14 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   document.getElementById("scan").onclick = async () => {
@@ -1046,16 +1513,19 @@
       }
 
       parsedFiles = await loadFiles(files);
+      allResults = [];
+      visibleResults = [];
+      manualLabels.clear();
+      activeFilter = "";
+      activeFile = "__INPUTS__";
+
       populateTrackerSelect();
+      populateFileFilter();
+      renderMappingPanel();
       renderFileStatus();
 
       document.getElementById("run").disabled = false;
       document.getElementById("reset").disabled = false;
-
-      const tracker = parsedFiles[trackerFileIndex];
-      if (!tracker || !hasHeader(tracker, "isDoctor")) {
-        document.getElementById("fileStatus").innerHTML += '<div class="hint">Warning: selected tracker does not have <code>user_data.is_doctor</code>. Select another tracker before running.</div>';
-      }
     } catch (err) {
       console.error(err);
       alert(err.message || String(err));
@@ -1066,91 +1536,40 @@
     try {
       trackerFileIndex = Number(document.getElementById("trackerSelect").value);
       allResults = classifyAll();
-      visibleResults = allResults.slice();
+      manualLabels.clear();
       activeFilter = "";
 
       document.getElementById("search").disabled = false;
       document.getElementById("labelFilter").disabled = false;
-      document.getElementById("download").disabled = false;
-      document.getElementById("downloadNoPatients").disabled = false;
-      document.getElementById("downloadDoctorsOnly").disabled = false;
+      document.getElementById("downloadReport").disabled = false;
+      document.getElementById("downloadCurrentView").disabled = false;
+      document.getElementById("downloadOriginal").disabled = false;
+      document.getElementById("exportMode").disabled = false;
 
-      renderFileStatus();
       applyFilters();
+      renderFileStatus();
     } catch (err) {
       console.error(err);
       alert(err.message || String(err));
     }
   };
 
-  document.getElementById("download").onclick = () => {
-    downloadFile("tracker_based_doctor_patient_matches.csv", exportCSV(allResults));
+  document.getElementById("downloadReport").onclick = () => {
+    downloadText("tracker_match_full_report.csv", exportReportCSV(allResults));
   };
 
+  document.getElementById("downloadCurrentView").onclick = () => {
+    downloadText("tracker_match_current_view_report.csv", exportReportCSV(visibleResults));
+  };
 
-  function safeFilename(name) {
-    return String(name || "export.csv")
-      .replace(/\.csv$/i, "")
-      .replace(/[^a-zA-Z0-9._-]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "export";
-  }
-
-  function originalRowsToCSV(headers, rows) {
-    const lines = [headers.map(csvEscape).join(",")];
-    for (const row of rows) {
-      lines.push(headers.map(h => csvEscape(row[h] ?? "")).join(","));
-    }
-    return lines.join("\n");
-  }
-
-  function downloadFilteredInputFiles(mode) {
-    if (!allResults.length) {
-      alert("Run matching first.");
-      return;
-    }
-
-    const trackerFile = parsedFiles[trackerFileIndex];
-    const trackerName = trackerFile ? trackerFile.name : "";
-    const nonTrackerFiles = parsedFiles.filter(f => f.name !== trackerName);
-
-    if (!nonTrackerFiles.length) {
-      alert("No non-tracker input files found. Upload at least one export file in addition to the tracker.");
-      return;
-    }
-
-    let predicate;
-    let prefix;
-    if (mode === "no_patients") {
-      predicate = r => r.label !== "PATIENT_CERTAIN";
-      prefix = "patients_removed";
-    } else if (mode === "doctors_only") {
-      predicate = r => r.label === "DOCTOR_CERTAIN";
-      prefix = "doctors_only";
-    } else {
-      throw new Error("Unknown export mode: " + mode);
-    }
-
-    let downloads = 0;
-    for (const file of nonTrackerFiles) {
-      const resultRows = allResults.filter(r => r.source_file === file.name && predicate(r));
-      const rowNumbers = new Set(resultRows.map(r => r.row_number));
-      const originalRows = file.rows.filter(row => rowNumbers.has(row.__row_number));
-      const csv = originalRowsToCSV(file.headers, originalRows);
-      downloadFile(`${prefix}_${safeFilename(file.name)}.csv`, csv);
-      downloads++;
-    }
-
-    if (downloads > 1) {
-      alert(`Started ${downloads} downloads. Your browser may ask you to allow multiple downloads from this page.`);
-    }
-  }
-
-  document.getElementById("downloadNoPatients").onclick = () => downloadFilteredInputFiles("no_patients");
-
-  document.getElementById("downloadDoctorsOnly").onclick = () => downloadFilteredInputFiles("doctors_only");
+  document.getElementById("downloadOriginal").onclick = () => {
+    downloadOriginalRows(document.getElementById("exportMode").value);
+  };
 
   document.getElementById("reset").onclick = () => {
     activeFilter = "";
+    activeFile = "__INPUTS__";
+    document.getElementById("fileFilter").value = activeFile;
     document.getElementById("search").value = "";
     document.getElementById("labelFilter").value = "";
     applyFilters();
