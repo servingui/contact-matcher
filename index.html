@@ -24,6 +24,8 @@
       --red: #b42318;
       --yellow-bg: #fffbeb;
       --yellow: #92400e;
+      --purple-bg: #f4ebff;
+      --purple: #6941c6;
     }
 
     * { box-sizing: border-box; }
@@ -41,10 +43,10 @@
     }
 
     header {
-      height: 72px;
+      height: 70px;
       background: var(--panel);
       border-bottom: 1px solid var(--border);
-      padding: 14px 22px;
+      padding: 13px 22px;
     }
 
     header h1 {
@@ -59,7 +61,7 @@
     }
 
     main {
-      height: calc(100vh - 72px);
+      height: calc(100vh - 70px);
       display: grid;
       grid-template-rows: auto auto 1fr;
       gap: 10px;
@@ -148,7 +150,7 @@
 
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(10, minmax(92px, 1fr));
+      grid-template-columns: repeat(11, minmax(82px, 1fr));
       gap: 8px;
     }
 
@@ -156,12 +158,12 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       background: var(--panel-2);
-      padding: 9px 10px;
+      padding: 8px 9px;
       min-width: 0;
     }
 
     .card .value {
-      font-size: 19px;
+      font-size: 18px;
       font-weight: 780;
       line-height: 1.1;
       white-space: nowrap;
@@ -171,7 +173,7 @@
 
     .card .label {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10.5px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -321,8 +323,8 @@
     th:nth-child(2), td:nth-child(2) { width: 12%; }
     th:nth-child(3), td:nth-child(3) { width: 16%; }
     th:nth-child(4), td:nth-child(4) { width: 16%; }
-    th:nth-child(5), td:nth-child(5) { width: 12%; }
-    th:nth-child(6), td:nth-child(6) { width: 22%; }
+    th:nth-child(5), td:nth-child(5) { width: 13%; }
+    th:nth-child(6), td:nth-child(6) { width: 21%; }
     th:nth-child(7), td:nth-child(7) { width: 13%; }
 
     tr:hover td {
@@ -343,6 +345,7 @@
     .badge.unknown { background: var(--gray-bg); color: var(--gray); }
     .badge.exclude { background: var(--red-bg); color: var(--red); }
     .badge.matched { background: #e0f2fe; color: #075985; }
+    .badge.review { background: var(--purple-bg); color: var(--purple); }
     .badge.unmatched { background: var(--gray-bg); color: var(--gray); }
 
     .small {
@@ -391,7 +394,7 @@
 <body>
 <header>
   <h1>Tracker-Based Doctor / Patient Matcher</h1>
-  <p>Static browser app. Select a tracker, map columns, match non-empty rows, review labels, and export original rows by effective label.</p>
+  <p>Safer identity resolution: exact email or strict surname-gated name matching. Weak fuzzy candidates become review suggestions, not automatic doctor/patient labels.</p>
 </header>
 
 <main>
@@ -414,8 +417,8 @@
           <button id="run" class="primary" disabled>Run matching</button>
         </div>
         <div class="hint">
-          Recommended columns: <code>email</code>, <code>first_name</code>, <code>last_name</code>, <code>full_name</code>.
-          Dirty headers are supported via column mapping. Empty rows are skipped. Downloads preserve original columns and use the current browser labels.
+          A same first name is never enough. Surname compatibility is mandatory for automatic name matches.
+          Dirty row-text matches are review-only unless you explicitly map columns. Downloads preserve original columns and use current browser labels.
         </div>
       </div>
       <div class="row" style="justify-content:flex-end">
@@ -427,7 +430,8 @@
             <option value="DOCTOR_CERTAIN">Effective DOCTOR_CERTAIN</option>
             <option value="PATIENT_CERTAIN">Effective PATIENT_CERTAIN</option>
             <option value="UNKNOWN">Effective UNKNOWN</option>
-            <option value="MATCHED">Matched rows</option>
+            <option value="MATCHED">Accepted matches</option>
+            <option value="REVIEW">Review suggestions</option>
             <option value="UNMATCHED">Unmatched rows</option>
             <option value="patients_removed">Patients removed</option>
           </select>
@@ -486,7 +490,7 @@
               <th>Status</th>
               <th>Label / Review</th>
               <th>Input row identity</th>
-              <th>Tracker match</th>
+              <th>Tracker candidate</th>
               <th>Match type</th>
               <th>Original row</th>
               <th>Source</th>
@@ -508,13 +512,12 @@
   const TRUE_VALUES = new Set(["vero", "true", "1", "yes", "y", "si", "sì", "doctor", "medico", "dottore"]);
   const FALSE_VALUES = new Set(["falso", "false", "0", "no", "n", "patient", "paziente"]);
   const LABELS = ["DOCTOR_CERTAIN", "PATIENT_CERTAIN", "UNKNOWN", "EXCLUDE"];
-
   const CANONICAL_FIELDS = ["email", "firstName", "lastName", "fullName", "isDoctor"];
 
   const ALIASES = {
     email: ["email", "email_lc", "e-mail", "indirizzo e-mail", "indirizzo email", "email address", "mail", "e_mail"],
-    firstName: ["first_name", "first name", "firstname", "nome", "given name", "forename"],
-    lastName: ["last_name", "last name", "lastname", "surname", "cognome", "family name", "last"],
+    firstName: ["first_name", "first name", "firstname", "nome", "given name", "forename", "user_data.first_name"],
+    lastName: ["last_name", "last name", "lastname", "surname", "cognome", "family name", "last", "user_data.last_name"],
     fullName: ["nome e cognome", "full_name", "full name", "customer name", "referente", "contact name", "nominativo", "name and surname", "nome completo"],
     isDoctor: ["user_data.is_doctor", "is_doctor", "is doctor"]
   };
@@ -545,15 +548,22 @@
     return norm(value).split(/\s+/).map(x => x.trim()).filter(x => x.length >= 2);
   }
 
+  function dedupeConsecutive(tokens) {
+    const out = [];
+    for (const t of tokens) {
+      if (!out.length || out[out.length - 1] !== t) out.push(t);
+    }
+    return out;
+  }
+
   function uniqueHeaders(rawHeaders, maxLen) {
     const result = [];
     const seen = new Map();
     for (let i = 0; i < maxLen; i++) {
       let base = String(rawHeaders[i] || `column_${i + 1}`).replace(/^\ufeff/, "").trim();
       if (!base) base = `column_${i + 1}`;
-      const key = base;
-      const count = seen.get(key) || 0;
-      seen.set(key, count + 1);
+      const count = seen.get(base) || 0;
+      seen.set(base, count + 1);
       result.push(count ? `${base}_${count + 1}` : base);
     }
     return result;
@@ -646,13 +656,7 @@
       rows.push(obj);
     }
 
-    return {
-      headers,
-      rows,
-      skippedEmptyRows,
-      totalDataRows: rawRows.length - 1,
-      delimiter
-    };
+    return { headers, rows, skippedEmptyRows, totalDataRows: rawRows.length - 1, delimiter };
   }
 
   function classifyDoctorValue(value) {
@@ -690,13 +694,7 @@
     if (!firstName && genericName && genericSurname) firstName = genericName;
     if (!fullName && genericName && !genericSurname && !firstName) fullName = genericName;
 
-    return {
-      email,
-      firstName,
-      lastName,
-      fullName,
-      isDoctor
-    };
+    return { email, firstName, lastName, fullName, isDoctor };
   }
 
   function getMappedValue(file, row, field) {
@@ -708,27 +706,70 @@
     return compact(getMappedValue(file, row, "email"));
   }
 
-  function getFirstName(file, row) {
-    return norm(getMappedValue(file, row, "firstName"));
-  }
-
-  function getLastName(file, row) {
-    return norm(getMappedValue(file, row, "lastName"));
-  }
-
-  function getFullName(file, row) {
-    const full = getMappedValue(file, row, "fullName");
-    const first = getMappedValue(file, row, "firstName");
-    const last = getMappedValue(file, row, "lastName");
-    return norm(full || `${first} ${last}`);
-  }
-
   function getDoctorValue(file, row) {
     return getMappedValue(file, row, "isDoctor");
   }
 
   function getDirtyRowText(file, row) {
     return norm(file.headers.map(h => row[h]).filter(v => String(v ?? "").trim() !== "").join(" "));
+  }
+
+  function hasMappedIdentity(file) {
+    return Boolean(file.mapping.email || file.mapping.firstName || file.mapping.lastName || file.mapping.fullName);
+  }
+
+  function parsePersonName(file, row) {
+    const firstRaw = norm(getMappedValue(file, row, "firstName"));
+    const lastRaw = norm(getMappedValue(file, row, "lastName"));
+    const fullRaw = norm(getMappedValue(file, row, "fullName"));
+
+    let firstTokens = splitTokens(firstRaw);
+    let lastTokens = splitTokens(lastRaw);
+    let fullTokens = splitTokens(fullRaw);
+
+    // Fix duplicated tracker names such as "alessandro fragnoli" + "fragnoli".
+    if (lastTokens.length && firstTokens.length >= lastTokens.length) {
+      const tail = firstTokens.slice(firstTokens.length - lastTokens.length).join(" ");
+      if (tail === lastTokens.join(" ")) {
+        firstTokens = firstTokens.slice(0, firstTokens.length - lastTokens.length);
+      }
+    }
+
+    let tokens;
+    if (fullTokens.length) {
+      tokens = fullTokens;
+    } else {
+      tokens = firstTokens.concat(lastTokens);
+    }
+
+    tokens = dedupeConsecutive(tokens);
+
+    let lastName = "";
+    let firstName = "";
+
+    if (lastTokens.length) {
+      lastName = lastTokens[lastTokens.length - 1];
+      firstName = firstTokens.join(" ");
+    } else if (tokens.length >= 2) {
+      lastName = tokens[tokens.length - 1];
+      firstName = tokens.slice(0, -1).join(" ");
+    } else if (tokens.length === 1) {
+      firstName = tokens[0];
+    }
+
+    const fullName = tokens.join(" ");
+
+    return {
+      firstName,
+      lastName,
+      fullName,
+      tokens,
+      firstTokens: splitTokens(firstName),
+      lastTokens: lastName ? [lastName] : [],
+      hasSeparateFirstLast: Boolean(file.mapping.firstName && file.mapping.lastName),
+      hasFullName: Boolean(file.mapping.fullName),
+      hasMappedIdentity: hasMappedIdentity(file)
+    };
   }
 
   function previewOriginal(file, row) {
@@ -765,11 +806,11 @@
     return files;
   }
 
-  function fuzzyThreshold() {
+  function fuzzyModeConfig() {
     const mode = document.getElementById("fuzzyMode").value;
-    if (mode === "permissive") return 0.80;
-    if (mode === "normal") return 0.86;
-    return 0.90;
+    if (mode === "permissive") return { acceptScore: 0.84, reviewScore: 0.76, margin: 0.03 };
+    if (mode === "normal") return { acceptScore: 0.88, reviewScore: 0.80, margin: 0.04 };
+    return { acceptScore: 0.91, reviewScore: 0.84, margin: 0.05 };
   }
 
   function buildTracker(trackerFile) {
@@ -778,9 +819,7 @@
 
     for (const row of trackerFile.rows) {
       const email = getEmail(trackerFile, row);
-      const firstName = getFirstName(trackerFile, row);
-      const lastName = getLastName(trackerFile, row);
-      const fullName = getFullName(trackerFile, row);
+      const name = parsePersonName(trackerFile, row);
       const dirtyText = getDirtyRowText(trackerFile, row);
       const doctorValue = getDoctorValue(trackerFile, row);
       const label = classifyDoctorValue(doctorValue);
@@ -790,11 +829,8 @@
         row_number: row.__row_number,
         row,
         email,
-        firstName,
-        lastName,
-        fullName,
+        name,
         dirtyText,
-        nameTokens: splitTokens(fullName || `${firstName} ${lastName}`),
         doctorValue,
         label
       };
@@ -804,6 +840,23 @@
     }
 
     return { people, byEmail };
+  }
+
+  function levenshtein(a, b) {
+    a = norm(a); b = norm(b);
+    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        dp[i][j] = Math.min(
+          dp[i - 1][j] + 1,
+          dp[i][j - 1] + 1,
+          dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        );
+      }
+    }
+    return dp[a.length][b.length];
   }
 
   function jaroWinkler(s1, s2) {
@@ -862,15 +915,120 @@
     return intersection / Math.max(a.size, b.size);
   }
 
+  function firstCompatible(input, tracker) {
+    if (!input.firstTokens.length || !tracker.firstTokens.length) {
+      return { ok: false, score: 0, reason: "missing first name" };
+    }
+
+    let best = 0;
+    for (const a of input.firstTokens) {
+      for (const b of tracker.firstTokens) {
+        best = Math.max(best, jaroWinkler(a, b));
+      }
+    }
+
+    return {
+      ok: best >= 0.88,
+      score: best,
+      reason: `first score ${best.toFixed(2)}`
+    };
+  }
+
+  function surnameCompatible(input, tracker) {
+    if (!input.lastName || !tracker.lastName) {
+      return { ok: false, score: 0, distance: null, reason: "missing surname" };
+    }
+
+    const a = input.lastName;
+    const b = tracker.lastName;
+
+    if (a === b) {
+      return { ok: true, score: 1, distance: 0, reason: "exact surname" };
+    }
+
+    if (a[0] !== b[0]) {
+      return { ok: false, score: 0, distance: levenshtein(a, b), reason: `surname first letter differs: ${a} vs ${b}` };
+    }
+
+    const distance = levenshtein(a, b);
+    const jw = jaroWinkler(a, b);
+    const maxLen = Math.max(a.length, b.length);
+
+    // Designed to accept "rosis" ↔ "rossi" and "marcheis" ↔ "marchesi",
+    // but reject "tiroli" ↔ "tiberti", "nota" ↔ "limonta", etc.
+    const ok = distance <= 1 || (maxLen >= 5 && distance <= 2 && jw >= 0.92);
+
+    return {
+      ok,
+      score: jw,
+      distance,
+      reason: `surname score ${jw.toFixed(2)}, distance ${distance}`
+    };
+  }
+
+  function scoreNameMatch(inputName, trackerName) {
+    const first = firstCompatible(inputName, trackerName);
+    const surname = surnameCompatible(inputName, trackerName);
+
+    if (!surname.ok) {
+      return {
+        accepted: false,
+        review: false,
+        score: Math.max(first.score * 0.35, surname.score),
+        reason: `Rejected: surname incompatible (${surname.reason}). Same/similar first name is not enough.`,
+        first,
+        surname
+      };
+    }
+
+    if (!first.ok) {
+      return {
+        accepted: false,
+        review: true,
+        score: surname.score * 0.75,
+        reason: `Review only: surname compatible but first name weak/missing (${first.reason}).`,
+        first,
+        surname
+      };
+    }
+
+    const tokenScore = tokenOverlapScore(inputName.tokens, trackerName.tokens);
+    const score = (0.58 * surname.score) + (0.32 * first.score) + (0.10 * tokenScore);
+
+    return {
+      accepted: true,
+      review: false,
+      score,
+      reason: `Accepted strict name gate: ${first.reason}; ${surname.reason}; token overlap ${tokenScore.toFixed(2)}.`,
+      first,
+      surname
+    };
+  }
+
+  function dirtyTextCandidateScore(file, row, trackerPerson) {
+    const dirtyText = getDirtyRowText(file, row);
+    const trackerName = trackerPerson.name.fullName;
+    if (!dirtyText || !trackerName) return { score: 0, evidence: "" };
+
+    if (dirtyText.includes(trackerName) && trackerName.length >= 5) {
+      return { score: 0.90, evidence: `Row text contains tracker name: "${trackerName}".` };
+    }
+
+    if (dirtyText.length <= 140) {
+      const s = jaroWinkler(dirtyText, trackerName);
+      if (s >= 0.86) {
+        return { score: s, evidence: `Dirty row-text fuzzy score ${s.toFixed(2)}: "${dirtyText}" ↔ "${trackerName}".` };
+      }
+    }
+
+    return { score: 0, evidence: "" };
+  }
+
   function findBestTrackerMatch(file, row, tracker) {
     const email = getEmail(file, row);
-    const firstName = getFirstName(file, row);
-    const lastName = getLastName(file, row);
-    const fullName = getFullName(file, row);
-    const dirtyText = getDirtyRowText(file, row);
-    const inputName = fullName || norm(`${firstName} ${lastName}`);
-    const inputTokens = splitTokens(inputName || dirtyText);
-    const threshold = fuzzyThreshold();
+    const inputName = parsePersonName(file, row);
+    const hasExplicitIdentity = inputName.hasMappedIdentity;
+    const config = fuzzyModeConfig();
 
     if (email && tracker.byEmail.has(email)) {
       const person = tracker.byEmail.get(email);
@@ -879,101 +1037,126 @@
         score: 1,
         matchType: "EXACT_EMAIL",
         status: "MATCHED",
+        suggestedLabel: person.label,
         evidence: [`Exact email match: ${email}`]
       };
     }
 
-    let best = null;
+    const candidates = [];
 
     for (const person of tracker.people) {
-      const trackerName = person.fullName || norm(`${person.firstName} ${person.lastName}`);
+      let status = "UNMATCHED";
+      let matchType = "NO_MATCH";
+      let suggestedLabel = "UNKNOWN";
+      let evidence = [];
       let score = 0;
-      const evidence = [];
-      const matchParts = [];
 
-      if (inputName && trackerName) {
-        const s = jaroWinkler(inputName, trackerName);
-        score = Math.max(score, s);
-        if (s >= 0.90) {
-          evidence.push(`Fuzzy full-name match ${s.toFixed(2)}: "${inputName}" ↔ "${trackerName}"`);
-          matchParts.push("FUZZY_FULL_NAME");
+      if (hasExplicitIdentity) {
+        const s = scoreNameMatch(inputName, person.name);
+        score = s.score;
+        evidence.push(s.reason);
+
+        if (s.accepted) {
+          status = "MATCHED";
+          matchType = "STRICT_FIRST_LAST_SURNAME_GATE";
+          suggestedLabel = person.label;
+        } else if (s.review && score >= config.reviewScore) {
+          status = "REVIEW";
+          matchType = "REVIEW_SURNAME_ONLY";
+          suggestedLabel = "UNKNOWN";
+        }
+      } else {
+        const dirty = dirtyTextCandidateScore(file, row, person);
+        score = dirty.score;
+        if (dirty.score > 0) {
+          status = "REVIEW";
+          matchType = "REVIEW_DIRTY_ROW_TEXT";
+          suggestedLabel = "UNKNOWN";
+          evidence.push(dirty.evidence);
+          evidence.push("Review only: no explicit identity columns are mapped for this file.");
         }
       }
 
-      if (firstName && lastName && person.firstName && person.lastName) {
-        const s1 = jaroWinkler(firstName, person.firstName);
-        const s2 = jaroWinkler(lastName, person.lastName);
-        const combo = (s1 + s2) / 2;
-        score = Math.max(score, combo);
-        if (s1 >= 0.88 && s2 >= 0.88) {
-          evidence.push(`Fuzzy first/last match: first=${s1.toFixed(2)}, last=${s2.toFixed(2)}`);
-          matchParts.push("FUZZY_FIRST_LAST");
-        }
-      }
-
-      if (inputTokens.length && person.nameTokens.length) {
-        const overlap = tokenOverlapScore(inputTokens, person.nameTokens);
-        const overlapScore = overlap * 0.96;
-        score = Math.max(score, overlapScore);
-        if (overlap >= 0.75) {
-          evidence.push(`Name token overlap ${overlap.toFixed(2)}: "${inputName || dirtyText}" ↔ "${trackerName}"`);
-          matchParts.push("TOKEN_NAME_OVERLAP");
-        }
-      }
-
-      if (!inputName && dirtyText && trackerName && dirtyText.length <= 120) {
-        const s = jaroWinkler(dirtyText, trackerName);
-        score = Math.max(score, s);
-        if (s >= 0.92) {
-          evidence.push(`Dirty row-text fuzzy match ${s.toFixed(2)}: "${dirtyText}" ↔ "${trackerName}"`);
-          matchParts.push("DIRTY_ROW_TEXT_FUZZY");
-        }
-      }
-
-      if (inputName && dirtyText && trackerName && dirtyText.includes(trackerName) && trackerName.length >= 5) {
-        score = Math.max(score, 0.93);
-        evidence.push(`Row text contains tracker name: "${trackerName}"`);
-        matchParts.push("ROW_TEXT_CONTAINS_NAME");
-      }
-
-      if (email && person.nameTokens.length) {
-        const local = email.split("@")[0].replace(/[._+\-0-9]/g, " ");
-        const overlap = tokenOverlapScore(splitTokens(local), person.nameTokens);
-        if (overlap >= 0.75) {
-          score = Math.max(score, 0.88);
-          evidence.push(`Email local-part resembles tracker name: ${local}`);
-          matchParts.push("EMAIL_LOCAL_NAME");
-        }
-      }
-
-      if (!best || score > best.score) {
-        best = {
-          person,
-          score,
-          matchType: matchParts.length ? Array.from(new Set(matchParts)).join("+") : "NO_MATCH",
-          evidence
-        };
-      }
+      candidates.push({ person, score, status, matchType, suggestedLabel, evidence });
     }
 
-    if (!best || best.score < threshold) {
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0];
+    const second = candidates[1];
+
+    if (!best || best.score <= 0) {
       return {
         person: null,
-        score: best ? best.score : 0,
+        score: 0,
         matchType: "NO_MATCH",
         status: "UNMATCHED",
-        evidence: best && best.score > 0
-          ? [`Best fuzzy score too low for ${document.getElementById("fuzzyMode").value} mode: ${best.score.toFixed(2)}${best.person ? ` with "${best.person.fullName}"` : ""}`]
-          : ["No reliable tracker match found."]
+        suggestedLabel: "UNKNOWN",
+        evidence: ["No reliable tracker candidate found."]
+      };
+    }
+
+    const margin = second ? best.score - second.score : 1;
+
+    if (best.status === "MATCHED") {
+      if (best.score < config.acceptScore) {
+        return {
+          person: best.person,
+          score: best.score,
+          matchType: "REVIEW_LOW_SCORE_STRICT_NAME",
+          status: "REVIEW",
+          suggestedLabel: "UNKNOWN",
+          evidence: best.evidence.concat([
+            `Review only: strict-name score ${best.score.toFixed(2)} is below ${document.getElementById("fuzzyMode").value} acceptance threshold ${config.acceptScore.toFixed(2)}.`
+          ])
+        };
+      }
+
+      if (margin < config.margin) {
+        return {
+          person: best.person,
+          score: best.score,
+          matchType: "REVIEW_AMBIGUOUS_CANDIDATES",
+          status: "REVIEW",
+          suggestedLabel: "UNKNOWN",
+          evidence: best.evidence.concat([
+            `Review only: best candidate is too close to second candidate. Margin ${margin.toFixed(3)}.`,
+            second ? `Second candidate: ${second.person.name.fullName || second.person.email}, score ${second.score.toFixed(2)}.` : ""
+          ]).filter(Boolean)
+        };
+      }
+
+      return {
+        person: best.person,
+        score: best.score,
+        matchType: best.matchType,
+        status: "MATCHED",
+        suggestedLabel: best.suggestedLabel,
+        evidence: best.evidence
+      };
+    }
+
+    if (best.status === "REVIEW" && best.score >= config.reviewScore) {
+      return {
+        person: best.person,
+        score: best.score,
+        matchType: best.matchType,
+        status: "REVIEW",
+        suggestedLabel: "UNKNOWN",
+        evidence: best.evidence.concat([
+          `Candidate tracker label is ${best.person.label}, but it is not applied automatically.`
+        ])
       };
     }
 
     return {
       person: best.person,
       score: best.score,
-      matchType: best.matchType,
-      status: "MATCHED",
-      evidence: best.evidence.length ? best.evidence : [`Fuzzy match accepted with score ${best.score.toFixed(2)}.`]
+      matchType: "NO_MATCH",
+      status: "UNMATCHED",
+      suggestedLabel: "UNKNOWN",
+      evidence: best.evidence.concat([
+        `No match accepted. Best candidate score ${best.score.toFixed(2)} in ${document.getElementById("fuzzyMode").value} mode.`
+      ])
     };
   }
 
@@ -991,6 +1174,7 @@
       for (const row of file.rows) {
         const isTrackerRow = file === trackerFile;
         let matched;
+        const inputName = parsePersonName(file, row);
 
         if (isTrackerRow) {
           const person = {
@@ -998,9 +1182,7 @@
             row_number: row.__row_number,
             row,
             email: getEmail(file, row),
-            firstName: getFirstName(file, row),
-            lastName: getLastName(file, row),
-            fullName: getFullName(file, row),
+            name: inputName,
             doctorValue: getDoctorValue(file, row),
             label: classifyDoctorValue(getDoctorValue(file, row))
           };
@@ -1010,6 +1192,7 @@
             score: 1,
             matchType: "TRACKER_SELF",
             status: "MATCHED",
+            suggestedLabel: person.label,
             evidence: ["This row comes from the selected tracker file."]
           };
         } else {
@@ -1017,7 +1200,7 @@
         }
 
         const person = matched.person;
-        const suggested = person ? person.label : "UNKNOWN";
+        const suggested = matched.suggestedLabel || (person ? person.label : "UNKNOWN");
         const confidence = person
           ? (matched.matchType === "EXACT_EMAIL" || matched.matchType === "TRACKER_SELF" ? 1 : Number(matched.score.toFixed(3)))
           : Number((matched.score || 0).toFixed(3));
@@ -1028,13 +1211,14 @@
           row_number: row.__row_number,
           is_tracker_row: isTrackerRow,
           input_email: getEmail(file, row),
-          input_name: getFullName(file, row) || norm(`${getFirstName(file, row)} ${getLastName(file, row)}`),
+          input_name: inputName.fullName,
           dirty_text: getDirtyRowText(file, row),
           matched_email: person ? person.email : "",
-          matched_name: person ? person.fullName : "",
-          matched_first_name: person ? person.firstName : "",
-          matched_last_name: person ? person.lastName : "",
+          matched_name: person ? person.name.fullName : "",
+          matched_first_name: person ? person.name.firstName : "",
+          matched_last_name: person ? person.name.lastName : "",
           tracker_doctor_value: person ? person.doctorValue : "",
+          candidate_tracker_label: person ? person.label : "",
           suggested_label: suggested,
           confidence,
           match_type: matched.matchType,
@@ -1065,16 +1249,18 @@
   }
 
   function isFuzzy(result) {
-    return result.match_type.includes("FUZZY") ||
+    return result.match_type.includes("STRICT") ||
+           result.match_type.includes("FUZZY") ||
            result.match_type.includes("TOKEN") ||
-           result.match_type.includes("EMAIL_LOCAL") ||
-           result.match_type.includes("ROW_TEXT");
+           result.match_type.includes("DIRTY") ||
+           result.match_type.includes("REVIEW");
   }
 
   function filterDefinitions() {
     return [
       ["", "All", r => true],
-      ["MATCHED", "Matched", r => r.match_status === "MATCHED"],
+      ["MATCHED", "Accepted", r => r.match_status === "MATCHED"],
+      ["REVIEW", "Review", r => r.match_status === "REVIEW"],
       ["UNMATCHED", "Unmatched", r => r.match_status === "UNMATCHED"],
       ["DOCTOR_CERTAIN", "Doctors", r => effectiveLabel(r) === "DOCTOR_CERTAIN"],
       ["PATIENT_CERTAIN", "Patients", r => effectiveLabel(r) === "PATIENT_CERTAIN"],
@@ -1082,7 +1268,7 @@
       ["EXCLUDE", "Excluded", r => effectiveLabel(r) === "EXCLUDE"],
       ["EDITED", "Edited", r => manualLabels.has(r.id)],
       ["EXACT_EMAIL", "Exact email", r => r.match_type === "EXACT_EMAIL"],
-      ["FUZZY", "Fuzzy", r => isFuzzy(r)]
+      ["FUZZY", "Name/fuzzy", r => isFuzzy(r)]
     ];
   }
 
@@ -1108,6 +1294,7 @@
           r.suggested_label,
           effectiveLabel(r),
           r.match_type,
+          r.match_status,
           r.evidence.join(" ")
         ].join(" "));
         if (!text.includes(q)) return false;
@@ -1127,6 +1314,7 @@
       rows: scope.length,
       visible: visibleResults.length,
       matched: scope.filter(r => r.match_status === "MATCHED").length,
+      review: scope.filter(r => r.match_status === "REVIEW").length,
       unmatched: scope.filter(r => r.match_status === "UNMATCHED").length,
       doctors: scope.filter(r => effectiveLabel(r) === "DOCTOR_CERTAIN").length,
       patients: scope.filter(r => effectiveLabel(r) === "PATIENT_CERTAIN").length,
@@ -1139,14 +1327,15 @@
     const cards = [
       ["Rows", counts.rows],
       ["Visible", counts.visible],
-      ["Matched", counts.matched],
+      ["Accepted", counts.matched],
+      ["Review", counts.review],
       ["Unmatched", counts.unmatched],
       ["Doctors", counts.doctors],
       ["Patients", counts.patients],
       ["Unknown", counts.unknown],
       ["Edited", counts.edited],
       ["Empty skipped", counts.emptySkipped],
-      ["Fuzzy", counts.fuzzy]
+      ["Fuzzy/name", counts.fuzzy]
     ];
 
     document.getElementById("summary").innerHTML = cards.map(([label, value]) => `
@@ -1177,10 +1366,16 @@
     return "unknown";
   }
 
+  function statusClass(status) {
+    if (status === "MATCHED") return "matched";
+    if (status === "REVIEW") return "review";
+    return "unmatched";
+  }
+
   function renderTable() {
     const tbody = document.getElementById("tbody");
     document.getElementById("tableInfo").textContent =
-      `${visibleResults.length} visible rows. File scope: ${activeFileLabel()}. Downloads use effective labels.`;
+      `${visibleResults.length} visible rows. File scope: ${activeFileLabel()}. Accepted matches can export automatically; review suggestions stay UNKNOWN unless manually changed.`;
 
     if (!visibleResults.length) {
       tbody.innerHTML = '<tr><td colspan="7" class="small">No rows match this view. If you export, the CSV will contain an explanation row.</td></tr>';
@@ -1196,7 +1391,7 @@
       return `
         <tr>
           <td>
-            <span class="badge ${r.match_status === "MATCHED" ? "matched" : "unmatched"}">${escapeHtml(r.match_status)}</span>
+            <span class="badge ${statusClass(r.match_status)}">${escapeHtml(r.match_status)}</span>
             <div class="small">${escapeHtml(r.confidence)}</div>
           </td>
           <td>
@@ -1216,6 +1411,7 @@
             <strong>${escapeHtml(r.matched_name || "")}</strong>
             <div>${escapeHtml(r.matched_email || "")}</div>
             <div class="small">tracker value: ${escapeHtml(r.tracker_doctor_value || "")}</div>
+            <div class="small">candidate label: ${escapeHtml(r.candidate_tracker_label || "")}</div>
           </td>
           <td>${escapeHtml(r.match_type)}</td>
           <td>
@@ -1252,13 +1448,13 @@
     }
 
     const tracker = parsedFiles[trackerFileIndex];
-    const msg = parsedFiles.map((f, idx) => {
+    const msg = parsedFiles.map(f => {
       const mapped = Object.entries(f.mapping)
         .filter(([, v]) => v)
         .map(([k, v]) => `${k}=${v}`)
         .join(", ") || "none";
       const tag = f === tracker ? "TRACKER" : "INPUT";
-      return `<div><strong>${escapeHtml(tag)} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty rows · ${f.skippedEmptyRows} empty skipped · mapped: ${escapeHtml(mapped)}</div>`;
+      return `<div><strong>${escapeHtml(tag)} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;
     }).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");
 
     document.getElementById("fileStatus").innerHTML = msg;
@@ -1286,7 +1482,7 @@
       }).join("");
 
       const warning = (!file.mapping.email && !file.mapping.firstName && !file.mapping.lastName && !file.mapping.fullName)
-        ? `<div class="warning">No identity fields mapped. Matching will only use dirty row text.</div>`
+        ? `<div class="warning">No identity fields mapped. Dirty row text will only create review suggestions, not automatic labels.</div>`
         : "";
 
       const trackerWarning = isTracker && !file.mapping.isDoctor
@@ -1296,7 +1492,7 @@
       return `
         <div class="file-card">
           <h3>${escapeHtml(isTracker ? "TRACKER · " : "INPUT · ")}${escapeHtml(file.name)}</h3>
-          <div class="meta">${file.rows.length} non-empty rows · ${file.skippedEmptyRows} empty skipped</div>
+          <div class="meta">${file.rows.length} non-empty · ${file.skippedEmptyRows} skipped</div>
           <div class="mapping-grid">${fieldRows}</div>
           ${warning}
           ${trackerWarning}
@@ -1336,7 +1532,7 @@
       renderMappingPanel();
       renderFileStatus();
       populateFileFilter();
-      applyFilters();
+      if (allResults.length) applyFilters();
     };
   }
 
@@ -1370,6 +1566,12 @@
     return parsedFiles.filter(f => f.name === activeFile);
   }
 
+  function fileInExportScope(result) {
+    if (activeFile === "__ALL__") return true;
+    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
+    return result.source_file === activeFile;
+  }
+
   function rowsForExportMode(mode) {
     if (mode === "current_view") return visibleResults.slice();
 
@@ -1381,6 +1583,7 @@
       }
 
       if (mode === "MATCHED") return r.match_status === "MATCHED";
+      if (mode === "REVIEW") return r.match_status === "REVIEW";
       if (mode === "UNMATCHED") return r.match_status === "UNMATCHED";
 
       if (mode === "patients_removed") {
@@ -1389,12 +1592,6 @@
 
       return false;
     });
-  }
-
-  function fileInExportScope(result) {
-    if (activeFile === "__ALL__") return true;
-    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
-    return result.source_file === activeFile;
   }
 
   function serializeOriginalRows(file, rows, message) {
@@ -1428,7 +1625,7 @@
       const fileRows = rows.filter(r => r.source_file === file.name);
       const message = fileRows.length
         ? null
-        : `No rows exported from ${file.name}. Export mode: ${mode}. File scope: ${activeFileLabel()}. Empty input rows were skipped before matching.`;
+        : `No rows exported from ${file.name}. Export mode: ${mode}. File scope: ${activeFileLabel()}. Review suggestions are not exported as doctor/patient unless manually changed.`;
       const csv = serializeOriginalRows(file, fileRows, message);
       const suffix = mode.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
       const base = file.name.replace(/\.csv$/i, "");
@@ -1443,7 +1640,7 @@
       "confidence", "match_type",
       "input_email", "input_name", "dirty_row_text",
       "matched_tracker_email", "matched_tracker_name",
-      "tracker_user_data_is_doctor", "evidence"
+      "candidate_tracker_label", "tracker_user_data_is_doctor", "evidence"
     ];
 
     const lines = [cols.join(",")];
@@ -1470,6 +1667,7 @@
         dirty_row_text: r.dirty_text,
         matched_tracker_email: r.matched_email,
         matched_tracker_name: r.matched_name,
+        candidate_tracker_label: r.candidate_tracker_label,
         tracker_user_data_is_doctor: r.tracker_doctor_value,
         evidence: r.evidence.join(" | ")
       };
