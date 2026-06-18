@@ -1,1780 +1,326 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Tracker-Based Doctor / Patient Matcher</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    :root {
-      --bg: #f6f7f9;
-      --panel: #fff;
-      --panel-2: #fbfcfe;
-      --border: #d9dee7;
-      --text: #172033;
-      --muted: #667085;
-      --blue: #1f6feb;
-      --blue-bg: #dbeafe;
-      --green-bg: #ecfdf3;
-      --green: #027a48;
-      --orange-bg: #fff7ed;
-      --orange: #c2410c;
-      --gray-bg: #f2f4f7;
-      --gray: #344054;
-      --red-bg: #fee4e2;
-      --red: #b42318;
-      --yellow-bg: #fffbeb;
-      --yellow: #92400e;
-      --purple-bg: #f4ebff;
-      --purple: #6941c6;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow: hidden;
-    }
-
-    header {
-      height: 70px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 13px 22px;
-    }
-
-    header h1 {
-      margin: 0 0 4px;
-      font-size: 20px;
-    }
-
-    header p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    main {
-      height: calc(100vh - 70px);
-      display: grid;
-      grid-template-rows: auto auto 1fr;
-      gap: 10px;
-      padding: 12px;
-      overflow: hidden;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      min-width: 0;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-    }
-
-    .topbar {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-      min-width: 0;
-    }
-
-    button, select, input[type="search"] {
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: white;
-      padding: 7px 10px;
-      font-size: 13px;
-      max-width: 100%;
-    }
-
-    button {
-      cursor: pointer;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-
-    button.primary {
-      background: var(--blue);
-      color: white;
-      border-color: var(--blue);
-    }
-
-    button:disabled, select:disabled, input:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-    }
-
-    input[type="file"] {
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      padding: 8px;
-      background: white;
-      font-size: 13px;
-      max-width: 360px;
-    }
-
-    input[type="search"] {
-      min-width: 240px;
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--yellow);
-      background: var(--yellow-bg);
-      border: 1px solid #fde68a;
-      border-radius: 10px;
-      padding: 8px 10px;
-      margin-top: 8px;
-    }
-
-    code {
-      background: #f2f4f7;
-      border-radius: 5px;
-      padding: 1px 4px;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(11, minmax(82px, 1fr));
-      gap: 8px;
-    }
-
-    .card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel-2);
-      padding: 8px 9px;
-      min-width: 0;
-    }
-
-    .card .value {
-      font-size: 18px;
-      font-weight: 780;
-      line-height: 1.1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .card .label {
-      color: var(--muted);
-      font-size: 10.5px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: 365px 1fr;
-      gap: 10px;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .side {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 10px;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .mapping-scroll {
-      overflow: auto;
-      min-height: 0;
-      padding-right: 2px;
-    }
-
-    .file-card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel-2);
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-
-    .file-card h3 {
-      margin: 0 0 6px;
-      font-size: 13px;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-
-    .file-card .meta {
-      color: var(--muted);
-      font-size: 11px;
-      margin-bottom: 8px;
-    }
-
-    .mapping-grid {
-      display: grid;
-      grid-template-columns: 80px 1fr;
-      gap: 6px;
-      align-items: center;
-      font-size: 12px;
-    }
-
-    .mapping-grid select {
-      width: 100%;
-      min-width: 0;
-      padding: 5px 7px;
-      font-size: 12px;
-    }
-
-    .warning {
-      margin-top: 8px;
-      padding: 7px 8px;
-      background: var(--yellow-bg);
-      border: 1px solid #fde68a;
-      color: var(--yellow);
-      border-radius: 8px;
-      font-size: 11px;
-    }
-
-    .results {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 10px;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    .filters {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .filter-pills {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 2px;
-    }
-
-    .pill {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 6px 9px;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: nowrap;
-      background: white;
-    }
-
-    .pill.active {
-      background: var(--blue-bg);
-      border-color: var(--blue);
-      color: #174ea6;
-      font-weight: 700;
-    }
-
-    .table-wrap {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: auto;
-      min-height: 0;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      table-layout: fixed;
-      font-size: 12px;
-    }
-
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-      text-align: left;
-      background: white;
-      overflow-wrap: anywhere;
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      z-index: 3;
-      background: #f8fafc;
-      color: #344054;
-      font-weight: 760;
-    }
-
-    th:nth-child(1), td:nth-child(1) { width: 9%; }
-    th:nth-child(2), td:nth-child(2) { width: 12%; }
-    th:nth-child(3), td:nth-child(3) { width: 16%; }
-    th:nth-child(4), td:nth-child(4) { width: 16%; }
-    th:nth-child(5), td:nth-child(5) { width: 13%; }
-    th:nth-child(6), td:nth-child(6) { width: 21%; }
-    th:nth-child(7), td:nth-child(7) { width: 13%; }
-
-    tr:hover td {
-      background: #fbfdff;
-    }
-
-    .badge {
-      display: inline-block;
-      border-radius: 999px;
-      padding: 3px 7px;
-      font-size: 10px;
-      font-weight: 780;
-      white-space: nowrap;
-    }
-
-    .badge.doctor { background: var(--green-bg); color: var(--green); }
-    .badge.patient { background: var(--orange-bg); color: var(--orange); }
-    .badge.unknown { background: var(--gray-bg); color: var(--gray); }
-    .badge.exclude { background: var(--red-bg); color: var(--red); }
-    .badge.matched { background: #e0f2fe; color: #075985; }
-    .badge.review { background: var(--purple-bg); color: var(--purple); }
-    .badge.unmatched { background: var(--gray-bg); color: var(--gray); }
-
-    .small {
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .review-select {
-      width: 100%;
-      padding: 5px 6px;
-      font-size: 12px;
-    }
-
-    details {
-      margin-top: 4px;
-    }
-
-    details summary {
-      cursor: pointer;
-      color: var(--blue);
-      font-size: 11px;
-    }
-
-    .kv {
-      margin: 2px 0;
-    }
-
-    .footer-note {
-      color: var(--muted);
-      font-size: 11px;
-      white-space: nowrap;
-    }
-
-    @media (max-width: 1050px) {
-      body { overflow: auto; }
-      header { height: auto; }
-      main { height: auto; overflow: visible; }
-      .workspace { grid-template-columns: 1fr; overflow: visible; }
-      .side, .results { overflow: visible; }
-      .mapping-scroll, .table-wrap { max-height: 70vh; }
-      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .topbar { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="utf-8">
+<title>Orixa Doctor Matcher & Commercial Cleaner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--panel2:#fbfcfe;--border:#d9dee7;--text:#172033;--muted:#667085;
+  --blue:#1f6feb;--bluebg:#dbeafe;--greenbg:#ecfdf3;--green:#027a48;--orangebg:#fff7ed;
+  --orange:#c2410c;--graybg:#f2f4f7;--gray:#344054;--redbg:#fee4e2;--red:#b42318;
+  --yellowbg:#fffbeb;--yellow:#92400e;--purplebg:#f4ebff;--purple:#6941c6;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}
+header{height:62px;background:var(--panel);border-bottom:1px solid var(--border);padding:10px 18px}
+header h1{margin:0 0 3px;font-size:19px}
+header p{margin:0;color:var(--muted);font-size:12px}
+.tabbar{height:42px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:6px 12px}
+.tabbtn{border:1px solid var(--border);background:white;border-radius:999px;padding:7px 12px;font-weight:700;cursor:pointer}
+.tabbtn.active{background:var(--bluebg);border-color:var(--blue);color:#174ea6}
+.app{height:calc(100vh - 104px);display:none;grid-template-rows:auto auto 1fr;gap:10px;padding:12px;overflow:hidden}
+.app.active{display:grid}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.topbar{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+button,select,input[type=search]{border:1px solid var(--border);border-radius:9px;background:white;padding:7px 10px;font-size:13px;max-width:100%}
+button{cursor:pointer;font-weight:650;white-space:nowrap}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+button:disabled,select:disabled,input:disabled{opacity:.55;cursor:not-allowed}
+input[type=file]{border:1px dashed var(--border);border-radius:10px;padding:8px;background:#fff;font-size:13px;max-width:360px}
+input[type=search]{min-width:220px}
+.hint{font-size:12px;color:var(--yellow);background:var(--yellowbg);border:1px solid #fde68a;border-radius:10px;padding:8px 10px;margin-top:8px}
+code{background:#f2f4f7;border-radius:5px;padding:1px 4px}
+.summary{display:grid;grid-template-columns:repeat(11,minmax(76px,1fr));gap:8px}
+.card{border:1px solid var(--border);border-radius:10px;background:var(--panel2);padding:8px 9px;min-width:0}
+.card .value{font-size:18px;font-weight:780;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .label{color:var(--muted);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.workspace{display:grid;grid-template-columns:365px 1fr;gap:10px;overflow:hidden;min-height:0}
+.side{display:grid;grid-template-rows:auto 1fr;gap:10px;overflow:hidden;min-height:0}
+.scroll{overflow:auto;min-height:0;padding-right:2px}
+.filecard{border:1px solid var(--border);border-radius:10px;background:var(--panel2);padding:10px;margin-bottom:10px}
+.filecard h3{margin:0 0 6px;font-size:13px;line-height:1.3;word-break:break-word}
+.meta{color:var(--muted);font-size:11px;margin-bottom:8px}
+.mapgrid{display:grid;grid-template-columns:85px 1fr;gap:6px;align-items:center;font-size:12px}
+.mapgrid select{width:100%;min-width:0;padding:5px 7px;font-size:12px}
+.warning{margin-top:8px;padding:7px 8px;background:var(--yellowbg);border:1px solid #fde68a;color:var(--yellow);border-radius:8px;font-size:11px}
+.results{display:grid;grid-template-rows:auto 1fr;gap:10px;overflow:hidden;min-height:0}
+.filters{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.pill{border:1px solid var(--border);border-radius:999px;padding:6px 9px;font-size:12px;cursor:pointer;white-space:nowrap;background:white}
+.pill.active{background:var(--bluebg);border-color:var(--blue);color:#174ea6;font-weight:700}
+.tablewrap{border:1px solid var(--border);border-radius:10px;overflow:auto;min-height:0}
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12px}
+th,td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top;text-align:left;background:white;overflow-wrap:anywhere}
+th{position:sticky;top:0;z-index:3;background:#f8fafc;color:#344054;font-weight:760}
+tr:hover td{background:#fbfdff}
+.badge{display:inline-block;border-radius:999px;padding:3px 7px;font-size:10px;font-weight:780;white-space:nowrap}
+.doctor{background:var(--greenbg);color:var(--green)} .patient{background:var(--orangebg);color:var(--orange)}
+.unknown{background:var(--graybg);color:var(--gray)} .exclude{background:var(--redbg);color:var(--red)}
+.matched{background:#e0f2fe;color:#075985}.review{background:var(--purplebg);color:var(--purple)}.unmatched{background:var(--graybg);color:var(--gray)}
+.small{color:var(--muted);font-size:11px}.reviewselect{width:100%;padding:5px 6px;font-size:12px}
+details{margin-top:4px} details summary{cursor:pointer;color:var(--blue);font-size:11px}.kv{margin:2px 0}.foot{color:var(--muted);font-size:11px;white-space:nowrap}
+@media(max-width:1050px){
+  body{overflow:auto}header{height:auto}.tabbar{height:auto;flex-wrap:wrap}.app{height:auto;overflow:visible}
+  .workspace{grid-template-columns:1fr;overflow:visible}.side,.results{overflow:visible}.scroll,.tablewrap{max-height:70vh}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}.topbar{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
 <header>
-  <h1>Tracker-Based Doctor / Patient Matcher</h1>
-  <p>Safer identity resolution: exact email or strict surname-gated name matching. Weak fuzzy candidates become review suggestions, not automatic doctor/patient labels.</p>
+  <h1>Orixa Doctor Matcher & Commercial Cleaner</h1>
+  <p>CSV-only static browser app. No data leaves the browser.</p>
 </header>
 
-<main>
+<nav class="tabbar">
+  <button class="tabbtn active" data-tab="doctorApp">Tracker Matcher</button>
+  <button class="tabbtn" data-tab="commercialApp">Commercial Doctor Cleaning</button>
+</nav>
+
+<main id="doctorApp" class="app active">
   <section class="panel">
     <div class="topbar">
       <div>
         <div class="row">
-          <input id="files" type="file" multiple accept=".csv">
-          <label>Tracker
-            <select id="trackerSelect" disabled><option value="">Upload files first</option></select>
-          </label>
-          <label>Fuzzy mode
-            <select id="fuzzyMode">
-              <option value="strict" selected>Strict</option>
-              <option value="normal">Normal</option>
-              <option value="permissive">Permissive</option>
-            </select>
-          </label>
-          <button id="scan" class="primary">Load files</button>
-          <button id="run" class="primary" disabled>Run matching</button>
+          <input id="dFiles" type="file" multiple accept=".csv">
+          <label>Tracker <select id="dTrackerSelect" disabled><option>Upload files first</option></select></label>
+          <label>Fuzzy mode <select id="dFuzzyMode"><option value="strict" selected>Strict</option><option value="normal">Normal</option><option value="permissive">Permissive</option></select></label>
+          <button id="dLoad" class="primary">Load files</button>
+          <button id="dRun" class="primary" disabled>Run matching</button>
         </div>
-        <div class="hint">
-          A same first name is never enough. Surname compatibility is mandatory for automatic name matches.
-          Dirty row-text matches are review-only unless you explicitly map columns. Downloads preserve original columns and use current browser labels.
-        </div>
+        <div class="hint">Current tracker matcher preserved: exact email or strict surname-gated name matching. Weak fuzzy/dirty text candidates become review suggestions, not automatic doctor/patient labels.</div>
       </div>
       <div class="row" style="justify-content:flex-end">
-        <button id="downloadReport" disabled>Report</button>
-        <button id="downloadCurrentView" disabled>Current view report</button>
-        <label>Original rows
-          <select id="exportMode" disabled>
-            <option value="current_view">Current view</option>
-            <option value="DOCTOR_CERTAIN">Effective DOCTOR_CERTAIN</option>
-            <option value="PATIENT_CERTAIN">Effective PATIENT_CERTAIN</option>
-            <option value="UNKNOWN">Effective UNKNOWN</option>
-            <option value="MATCHED">Accepted matches</option>
-            <option value="REVIEW">Review suggestions</option>
-            <option value="UNMATCHED">Unmatched rows</option>
-            <option value="patients_removed">Patients removed</option>
-          </select>
-        </label>
-        <button id="downloadOriginal" disabled>Download original CSVs</button>
-        <button id="reset" disabled>Reset</button>
+        <button id="dReport" disabled>Report</button>
+        <button id="dViewReport" disabled>Current view report</button>
+        <label>Original rows <select id="dExportMode" disabled>
+          <option value="current_view">Current view</option><option value="DOCTOR_CERTAIN">Effective DOCTOR_CERTAIN</option><option value="PATIENT_CERTAIN">Effective PATIENT_CERTAIN</option><option value="UNKNOWN">Effective UNKNOWN</option><option value="MATCHED">Accepted matches</option><option value="REVIEW">Review suggestions</option><option value="UNMATCHED">Unmatched rows</option><option value="patients_removed">Patients removed</option>
+        </select></label>
+        <button id="dDownloadOriginal" disabled>Download original CSVs</button>
+        <button id="dReset" disabled>Reset</button>
       </div>
     </div>
   </section>
 
-  <section class="summary-grid" id="summary">
-    <div class="card"><div class="value">0</div><div class="label">Rows</div></div>
-  </section>
+  <section class="summary" id="dSummary"><div class="card"><div class="value">0</div><div class="label">Rows</div></div></section>
 
   <section class="workspace">
     <aside class="side">
       <section class="panel">
-        <div class="row" style="justify-content:space-between">
-          <strong style="font-size:14px">File scope</strong>
-          <select id="fileFilter" disabled style="max-width:210px">
-            <option value="__INPUTS__">All input files</option>
-          </select>
-        </div>
-        <div class="small" id="fileStatus" style="margin-top:8px">No files loaded.</div>
+        <div class="row" style="justify-content:space-between"><strong style="font-size:14px">File scope</strong><select id="dFileFilter" disabled style="max-width:210px"><option>All input files</option></select></div>
+        <div class="small" id="dFileStatus" style="margin-top:8px">No files loaded.</div>
       </section>
-
-      <section class="panel mapping-scroll">
+      <section class="panel scroll">
         <strong style="font-size:14px">Column mapping</strong>
         <div class="small" style="margin:4px 0 10px">Map dirty columns here. This does not rename exported files.</div>
-        <div id="mappingPanel"></div>
+        <div id="dMappingPanel"></div>
       </section>
     </aside>
-
     <section class="panel results">
       <div>
-        <div class="filters">
-          <div class="filter-pills" id="filterPills"></div>
-          <div class="row" style="justify-content:flex-end">
-            <input id="search" type="search" placeholder="Search rows..." disabled>
-            <select id="labelFilter" disabled>
-              <option value="">All effective labels</option>
-              <option value="DOCTOR_CERTAIN">DOCTOR_CERTAIN</option>
-              <option value="PATIENT_CERTAIN">PATIENT_CERTAIN</option>
-              <option value="UNKNOWN">UNKNOWN</option>
-              <option value="EXCLUDE">EXCLUDE</option>
-            </select>
-          </div>
-        </div>
-        <div class="footer-note" id="tableInfo" style="margin-top:6px">No data yet.</div>
+        <div class="filters"><div class="pills" id="dPills"></div><div class="row" style="justify-content:flex-end"><input id="dSearch" type="search" placeholder="Search rows..." disabled><select id="dLabelFilter" disabled><option value="">All effective labels</option><option value="DOCTOR_CERTAIN">DOCTOR_CERTAIN</option><option value="PATIENT_CERTAIN">PATIENT_CERTAIN</option><option value="UNKNOWN">UNKNOWN</option><option value="EXCLUDE">EXCLUDE</option></select></div></div>
+        <div class="foot" id="dTableInfo" style="margin-top:6px">No data yet.</div>
       </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th style="width:9%">Status</th><th style="width:12%">Label / Review</th><th style="width:16%">Input row identity</th><th style="width:16%">Tracker candidate</th><th style="width:13%">Match type</th><th style="width:21%">Original row</th><th style="width:13%">Source</th></tr></thead>
+        <tbody id="dTbody"><tr><td colspan="7" class="small">Upload CSV files, map columns if needed, then run matching.</td></tr></tbody>
+      </table></div>
+    </section>
+  </section>
+</main>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Label / Review</th>
-              <th>Input row identity</th>
-              <th>Tracker candidate</th>
-              <th>Match type</th>
-              <th>Original row</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="7" class="small">Upload CSV files, map columns if needed, then run matching.</td></tr>
-          </tbody>
-        </table>
+<main id="commercialApp" class="app">
+  <section class="panel">
+    <div class="topbar">
+      <div>
+        <div class="row">
+          <label>Doctor reference CSV(s) <input id="cRefFiles" type="file" multiple accept=".csv"></label>
+          <label>Commercial CSV(s) <input id="cComFiles" type="file" multiple accept=".csv"></label>
+          <label>Fuzzy mode <select id="cFuzzyMode"><option value="strict" selected>Strict</option><option value="normal">Normal</option><option value="permissive">Permissive</option></select></label>
+          <button id="cLoad" class="primary">Load commercial setup</button>
+          <button id="cRun" class="primary" disabled>Find certain doctors</button>
+        </div>
+        <div class="hint">Commercial cleaning keeps only commercial rows linked to verified/certain doctors. Reference files can be a doctor-only CSV, an HCP verificati CSV, or a report from the tracker tab. If no label column is mapped in a reference file, all reference rows are assumed to be doctors.</div>
       </div>
+      <div class="row" style="justify-content:flex-end">
+        <button id="cReport" disabled>Cleaning report</button>
+        <button id="cViewReport" disabled>Current view report</button>
+        <label>Commercial rows <select id="cExportMode" disabled>
+          <option value="DOCTOR_CERTAIN" selected>Effective DOCTOR_CERTAIN only</option>
+          <option value="current_view">Current view</option>
+          <option value="REVIEW">Review suggestions</option>
+          <option value="UNKNOWN">Unknown only</option>
+          <option value="all_except_exclude">All except EXCLUDE</option>
+        </select></label>
+        <button id="cDownloadOriginal" disabled>Download commercial CSVs</button>
+        <button id="cReset" disabled>Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary" id="cSummary"><div class="card"><div class="value">0</div><div class="label">Rows</div></div></section>
+
+  <section class="workspace">
+    <aside class="side">
+      <section class="panel">
+        <div class="row" style="justify-content:space-between"><strong style="font-size:14px">Commercial file scope</strong><select id="cFileFilter" disabled style="max-width:210px"><option>All commercial files</option></select></div>
+        <div class="small" id="cFileStatus" style="margin-top:8px">No files loaded.</div>
+      </section>
+      <section class="panel scroll">
+        <strong style="font-size:14px">Column mapping</strong>
+        <div class="small" style="margin:4px 0 10px">Map doctor reference and commercial identity columns. Exports preserve original commercial columns.</div>
+        <div id="cMappingPanel"></div>
+      </section>
+    </aside>
+    <section class="panel results">
+      <div>
+        <div class="filters"><div class="pills" id="cPills"></div><div class="row" style="justify-content:flex-end"><input id="cSearch" type="search" placeholder="Search commercial rows..." disabled><select id="cLabelFilter" disabled><option value="">All effective labels</option><option value="DOCTOR_CERTAIN">DOCTOR_CERTAIN</option><option value="UNKNOWN">UNKNOWN</option><option value="EXCLUDE">EXCLUDE</option></select></div></div>
+        <div class="foot" id="cTableInfo" style="margin-top:6px">No data yet.</div>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th style="width:9%">Status</th><th style="width:12%">Label / Review</th><th style="width:17%">Commercial row identity</th><th style="width:17%">Doctor reference match</th><th style="width:13%">Match type</th><th style="width:20%">Original commercial row</th><th style="width:12%">Source</th></tr></thead>
+        <tbody id="cTbody"><tr><td colspan="7" class="small">Upload doctor reference and commercial CSVs, map columns, then run cleaning.</td></tr></tbody>
+      </table></div>
     </section>
   </section>
 </main>
 
 <script>
-(function () {
-  "use strict";
+(function(){
+"use strict";
+
+/* ---------- Common utilities ---------- */
+const TRUE_VALUES=new Set(["vero","true","1","yes","y","si","sì","doctor","medico","dottore","docteur"]);
+const FALSE_VALUES=new Set(["falso","false","0","no","n","patient","paziente"]);
+const LABELS=["DOCTOR_CERTAIN","PATIENT_CERTAIN","UNKNOWN","EXCLUDE"];
+const COMM_LABELS=["DOCTOR_CERTAIN","UNKNOWN","EXCLUDE"];
+const CANONICAL_FIELDS=["email","firstName","lastName","fullName","isDoctor"];
+const COMMERCIAL_FIELDS=["email","firstName","lastName","fullName","customerName","company","type","note"];
+const REF_FIELDS=["email","firstName","lastName","fullName","label","isDoctor"];
+const ALIASES={
+  email:["email","email_lc","e-mail","indirizzo e-mail","indirizzo email","email address","mail","e_mail"],
+  firstName:["first_name","first name","firstname","nome","given name","forename","user_data.first_name"],
+  lastName:["last_name","last name","lastname","surname","cognome","family name","last","user_data.last_name"],
+  fullName:["nome e cognome","full_name","full name","customer name","referente","contact name","nominativo","name and surname","nome completo"],
+  isDoctor:["user_data.is_doctor","is_doctor","is doctor"],
+  label:["label","effective_label","suggested_label","classification","class","status","user_label"],
+  customerName:["cliente","customer","customer name","client","client name","nominativo","ragione sociale","denominazione","nome cliente"],
+  company:["azienda","company","organization","organizzazione","account","default address company","societa","società"],
+  type:["tipo","tipologia","type","categoria","category"],
+  note:["note","notes","descrizione","description","comment","comments"]
+};
+function norm(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^\p{L}\p{N}@.+\-\s]/gu," ").replace(/\s+/g," ").trim();}
+function compact(v){return norm(v).replace(/[^a-z0-9@.+-]/g,"");}
+function splitTokens(v){return norm(v).split(/\s+/).map(x=>x.trim()).filter(x=>x.length>=2);}
+function dedupeConsecutive(tokens){const out=[];for(const t of tokens){if(!out.length||out[out.length-1]!==t)out.push(t);}return out;}
+function csvEscape(v){return `"${String(v??"").replace(/"/g,'""')}"`;}
+function escapeHtml(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function labelClass(l){if(l==="DOCTOR_CERTAIN")return"doctor";if(l==="PATIENT_CERTAIN")return"patient";if(l==="EXCLUDE")return"exclude";return"unknown";}
+function statusClass(s){if(s==="MATCHED")return"matched";if(s==="REVIEW")return"review";return"unmatched";}
+function downloadText(filename,content,mime="text/csv;charset=utf-8"){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function uniqueHeaders(rawHeaders,maxLen){const result=[],seen=new Map();for(let i=0;i<maxLen;i++){let base=String(rawHeaders[i]||`column_${i+1}`).replace(/^\ufeff/,"").trim();if(!base)base=`column_${i+1}`;const count=seen.get(base)||0;seen.set(base,count+1);result.push(count?`${base}_${count+1}`:base);}return result;}
+function rowIsEmpty(row,headers){return headers.every(h=>String(row[h]??"").trim()==="");}
+function detectDelimiter(text){const firstLine=text.split(/\r?\n/).find(l=>l.trim())||"";const candidates=[",",";","\t"];let best=",",bestCount=-1;for(const d of candidates){let count=0,inQuotes=false;for(const c of firstLine){if(c==='"')inQuotes=!inQuotes;else if(c===d&&!inQuotes)count++;}if(count>bestCount){best=d;bestCount=count;}}return best;}
+function parseCSV(text){text=text.replace(/^\ufeff/,"");const delimiter=detectDelimiter(text);const rawRows=[];let row=[],field="",inQuotes=false;for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(c==='"'&&inQuotes&&n==='"'){field+='"';i++;continue;}if(c==='"'){inQuotes=!inQuotes;continue;}if(c===delimiter&&!inQuotes){row.push(field);field="";continue;}if((c==="\n"||c==="\r")&&!inQuotes){if(c==="\r"&&n==="\n")i++;rawRows.push(row.concat([field]));row=[];field="";continue;}field+=c;}rawRows.push(row.concat([field]));while(rawRows.length&&rawRows[rawRows.length-1].every(v=>String(v??"").trim()===""))rawRows.pop();if(!rawRows.length)return{headers:[],rows:[],skippedEmptyRows:0,totalDataRows:0,delimiter};const maxLen=Math.max(...rawRows.map(r=>r.length));const headers=uniqueHeaders(rawRows[0],maxLen);const rows=[];let skippedEmptyRows=0;for(let i=1;i<rawRows.length;i++){const obj={};headers.forEach((h,j)=>obj[h]=rawRows[i][j]??"");obj.__row_number=i+1;if(rowIsEmpty(obj,headers)){skippedEmptyRows++;continue;}rows.push(obj);}return{headers,rows,skippedEmptyRows,totalDataRows:rawRows.length-1,delimiter};}
+async function loadCSVFiles(fileList,kind="file"){const files=[];for(const file of Array.from(fileList)){if(!file.name.toLowerCase().endsWith(".csv"))throw new Error(`Unsupported ${kind} "${file.name}". Export XLS/XLSX to CSV first.`);const text=await file.text();const parsed=parseCSV(text);const obj={name:file.name,headers:parsed.headers,rows:parsed.rows,skippedEmptyRows:parsed.skippedEmptyRows,totalDataRows:parsed.totalDataRows,delimiter:parsed.delimiter,mapping:{}};files.push(obj);}return files;}
+function headerMatches(header,aliases){const h=norm(header);return aliases.some(a=>h===norm(a));}
+function findHeader(headers,aliases){return headers.find(h=>headerMatches(h,aliases))||"";}
+function findHeaderByPredicate(headers,predicate){return headers.find(h=>predicate(norm(h),h))||"";}
+function autoMap(file,fields){const m={};if(fields.includes("email"))m.email=findHeaderByPredicate(file.headers,h=>h.includes("email")||h==="mail"||h.includes("e mail"));if(fields.includes("isDoctor"))m.isDoctor=findHeader(file.headers,ALIASES.isDoctor);if(fields.includes("label"))m.label=findHeader(file.headers,ALIASES.label);if(fields.includes("lastName"))m.lastName=findHeader(file.headers,ALIASES.lastName);if(fields.includes("firstName"))m.firstName=findHeader(file.headers,ALIASES.firstName);if(fields.includes("fullName"))m.fullName=findHeader(file.headers,ALIASES.fullName);if(fields.includes("customerName"))m.customerName=findHeader(file.headers,ALIASES.customerName);if(fields.includes("company"))m.company=findHeader(file.headers,ALIASES.company);if(fields.includes("type"))m.type=findHeader(file.headers,ALIASES.type);if(fields.includes("note"))m.note=findHeader(file.headers,ALIASES.note);
+  const genericName=findHeaderByPredicate(file.headers,h=>["name","nome"].includes(h));
+  if(fields.includes("firstName")&&!m.firstName&&genericName&&m.lastName)m.firstName=genericName;
+  if(fields.includes("fullName")&&!m.fullName&&genericName&&!m.lastName&&!m.firstName)m.fullName=genericName;
+  if(fields.includes("customerName")&&!m.customerName&&genericName)m.customerName=genericName;
+  return m;
+}
+function getMapped(file,row,field){const h=file.mapping[field];return h?(row[h]??""):"";}
+function getDirtyText(file,row){return norm(file.headers.map(h=>row[h]).filter(v=>String(v??"").trim()!=="").join(" "));}
+function classifyDoctorValue(value){const v=norm(value);if(TRUE_VALUES.has(v))return"DOCTOR_CERTAIN";if(FALSE_VALUES.has(v))return"PATIENT_CERTAIN";return"UNKNOWN";}
+function labelLooksDoctor(value){const v=norm(value);return v==="doctor_certain"||v==="doctor"||v==="hcp"||v==="medico"||v==="dottore"||TRUE_VALUES.has(v);}
+function parseNameFromParts(firstRaw,lastRaw,fullRaw,fallbackRaw=""){let firstTokens=splitTokens(firstRaw),lastTokens=splitTokens(lastRaw),fullTokens=splitTokens(fullRaw);if(lastTokens.length&&firstTokens.length>=lastTokens.length){const tail=firstTokens.slice(firstTokens.length-lastTokens.length).join(" ");if(tail===lastTokens.join(" "))firstTokens=firstTokens.slice(0,firstTokens.length-lastTokens.length);}let tokens=fullTokens.length?fullTokens:firstTokens.concat(lastTokens);if(!tokens.length&&fallbackRaw)tokens=splitTokens(fallbackRaw);tokens=dedupeConsecutive(tokens);let lastName="",firstName="";if(lastTokens.length){lastName=lastTokens[lastTokens.length-1];firstName=firstTokens.join(" ");}else if(tokens.length>=2){lastName=tokens[tokens.length-1];firstName=tokens.slice(0,-1).join(" ");}else if(tokens.length===1){firstName=tokens[0];}return{firstName,lastName,fullName:tokens.join(" "),tokens,firstTokens:splitTokens(firstName),lastTokens:lastName?[lastName]:[]};}
+function parsePersonName(file,row,extraFull=""){return parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),getMapped(file,row,"fullName"),extraFull);}
+function previewOriginal(file,row){const pairs=[];for(const h of file.headers){const v=String(row[h]??"").trim();if(v)pairs.push([h,v]);if(pairs.length>=7)break;}return pairs;}
+function levenshtein(a,b){a=norm(a);b=norm(b);const dp=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)dp[0][j]=j;for(let i=1;i<=a.length;i++){for(let j=1;j<=b.length;j++){dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));}}return dp[a.length][b.length];}
+function jaroWinkler(s1,s2){s1=norm(s1);s2=norm(s2);if(s1===s2)return 1;if(!s1||!s2)return 0;const len1=s1.length,len2=s2.length,md=Math.max(0,Math.floor(Math.max(len1,len2)/2)-1);const m1=new Array(len1).fill(false),m2=new Array(len2).fill(false);let matches=0;for(let i=0;i<len1;i++){const st=Math.max(0,i-md),en=Math.min(i+md+1,len2);for(let j=st;j<en;j++){if(m2[j]||s1[i]!==s2[j])continue;m1[i]=true;m2[j]=true;matches++;break;}}if(!matches)return 0;let k=0,tr=0;for(let i=0;i<len1;i++){if(!m1[i])continue;while(!m2[k])k++;if(s1[i]!==s2[k])tr++;k++;}const m=matches,jaro=(m/len1+m/len2+(m-tr/2)/m)/3;let prefix=0;for(let i=0;i<Math.min(4,len1,len2);i++){if(s1[i]===s2[i])prefix++;else break;}return jaro+prefix*.1*(1-jaro);}
+function tokenOverlapScore(aTokens,bTokens){if(!aTokens.length||!bTokens.length)return 0;const A=new Set(aTokens),B=new Set(bTokens);let inter=0;for(const t of A)if(B.has(t))inter++;return inter/Math.max(A.size,B.size);}
+function fuzzyConfig(prefix){const mode=document.getElementById(prefix+"FuzzyMode").value;if(mode==="permissive")return{acceptScore:.84,reviewScore:.76,margin:.03};if(mode==="normal")return{acceptScore:.88,reviewScore:.80,margin:.04};return{acceptScore:.91,reviewScore:.84,margin:.05};}
+function firstCompatible(input,tracker){if(!input.firstTokens.length||!tracker.firstTokens.length)return{ok:false,score:0,reason:"missing first name"};let best=0;for(const a of input.firstTokens)for(const b of tracker.firstTokens)best=Math.max(best,jaroWinkler(a,b));return{ok:best>=.88,score:best,reason:`first score ${best.toFixed(2)}`};}
+function surnameCompatible(input,tracker){if(!input.lastName||!tracker.lastName)return{ok:false,score:0,distance:null,reason:"missing surname"};const a=input.lastName,b=tracker.lastName;if(a===b)return{ok:true,score:1,distance:0,reason:"exact surname"};if(a[0]!==b[0])return{ok:false,score:0,distance:levenshtein(a,b),reason:`surname first letter differs: ${a} vs ${b}`};const distance=levenshtein(a,b),jw=jaroWinkler(a,b),maxLen=Math.max(a.length,b.length);const ok=distance<=1||(maxLen>=5&&distance<=2&&jw>=.92);return{ok,score:jw,distance,reason:`surname score ${jw.toFixed(2)}, distance ${distance}`};}
+function scoreNameMatch(input,tracker){const first=firstCompatible(input,tracker),surname=surnameCompatible(input,tracker);if(!surname.ok)return{accepted:false,review:false,score:Math.max(first.score*.35,surname.score),reason:`Rejected: surname incompatible (${surname.reason}). Same/similar first name is not enough.`,first,surname};if(!first.ok)return{accepted:false,review:true,score:surname.score*.75,reason:`Review only: surname compatible but first name weak/missing (${first.reason}).`,first,surname};const tokenScore=tokenOverlapScore(input.tokens,tracker.tokens);const score=.58*surname.score+.32*first.score+.10*tokenScore;return{accepted:true,review:false,score,reason:`Accepted strict name gate: ${first.reason}; ${surname.reason}; token overlap ${tokenScore.toFixed(2)}.`,first,surname};}
+function serializeOriginalRows(file,rows,message){const headers=file.headers.length?file.headers.slice():[];if(message){const finalHeaders=headers.includes("__message")?headers:headers.concat(["__message"]);const blank=Object.fromEntries(finalHeaders.map(h=>[h,""]));blank.__message=message;return[finalHeaders.map(csvEscape).join(","),finalHeaders.map(h=>csvEscape(blank[h]??"")).join(",")].join("\n");}return[headers.map(csvEscape).join(","),...rows.map(r=>headers.map(h=>csvEscape(r.original[h]??"")).join(","))].join("\n");}
+function reportCSV(rows,mode="doctor"){const cols=["source_file","row_number","match_status","suggested_label","user_label","effective_label","confidence","match_type","input_email","input_name","dirty_row_text","matched_email","matched_name","candidate_label","evidence"];const lines=[cols.join(",")];if(!rows.length){const empty=Object.fromEntries(cols.map(c=>[c,""]));empty.evidence="No rows match this report/export view.";lines.push(cols.map(c=>csvEscape(empty[c])).join(","));return lines.join("\n");}for(const r of rows){const user=mode==="commercial"?(cManual.get(r.id)||""):(dManual.get(r.id)||"");const eff=mode==="commercial"?cEffective(r):dEffective(r);const obj={source_file:r.source_file,row_number:r.row_number,match_status:r.match_status,suggested_label:r.suggested_label,user_label:user,effective_label:eff,confidence:r.confidence,match_type:r.match_type,input_email:r.input_email,input_name:r.input_name,dirty_row_text:r.dirty_text,matched_email:r.matched_email,matched_name:r.matched_name,candidate_label:r.candidate_label,evidence:r.evidence.join(" | ")};lines.push(cols.map(c=>csvEscape(obj[c])).join(","));}return lines.join("\n");}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tabbtn").forEach(btn=>btn.onclick=()=>{document.querySelectorAll(".tabbtn").forEach(b=>b.classList.remove("active"));document.querySelectorAll(".app").forEach(a=>a.classList.remove("active"));btn.classList.add("active");document.getElementById(btn.dataset.tab).classList.add("active");});
+
+/* ---------- Doctor tracker tab (current logic) ---------- */
+let dFiles=[],dTrackerIndex=-1,dActiveFile="__INPUTS__",dActiveFilter="",dAll=[],dVisible=[],dManual=new Map();
+function dEffective(r){return dManual.get(r.id)||r.suggested_label;}
+function dFileInScope(r){if(dActiveFile==="__ALL__")return true;if(dActiveFile==="__INPUTS__")return !r.is_tracker_row;return r.source_file===dActiveFile;}
+function dScoped(){return dAll.filter(dFileInScope);}
+function dIsFuzzy(r){return r.match_type.includes("STRICT")||r.match_type.includes("FUZZY")||r.match_type.includes("TOKEN")||r.match_type.includes("DIRTY")||r.match_type.includes("REVIEW");}
+function dBuildTracker(file){const people=[],byEmail=new Map();for(const row of file.rows){const email=compact(getMapped(file,row,"email"));const name=parsePersonName(file,row);const doctorValue=getMapped(file,row,"isDoctor");const label=classifyDoctorValue(doctorValue);const person={source_file:file.name,row_number:row.__row_number,row,email,name,dirtyText:getDirtyText(file,row),doctorValue,label};people.push(person);if(email)byEmail.set(email,person);}return{people,byEmail};}
+function dFindMatch(file,row,tracker){const email=compact(getMapped(file,row,"email"));const inputName=parsePersonName(file,row);const hasIdentity=Boolean(file.mapping.email||file.mapping.firstName||file.mapping.lastName||file.mapping.fullName);const config=fuzzyConfig("d");if(email&&tracker.byEmail.has(email)){const p=tracker.byEmail.get(email);return{person:p,score:1,matchType:"EXACT_EMAIL",status:"MATCHED",suggestedLabel:p.label,evidence:[`Exact email match: ${email}`]};}const candidates=[];for(const p of tracker.people){let status="UNMATCHED",matchType="NO_MATCH",suggestedLabel="UNKNOWN",evidence=[],score=0;if(hasIdentity){const s=scoreNameMatch(inputName,p.name);score=s.score;evidence.push(s.reason);if(s.accepted){status="MATCHED";matchType="STRICT_FIRST_LAST_SURNAME_GATE";suggestedLabel=p.label;}else if(s.review&&score>=config.reviewScore){status="REVIEW";matchType="REVIEW_SURNAME_ONLY";}}else{const dirty=getDirtyText(file,row),tName=p.name.fullName;if(dirty&&tName&&dirty.includes(tName)&&tName.length>=5){score=.90;status="REVIEW";matchType="REVIEW_DIRTY_ROW_TEXT";evidence.push(`Row text contains tracker name: "${tName}".`);evidence.push("Review only: no explicit identity columns are mapped.");}}candidates.push({person:p,score,status,matchType,suggestedLabel,evidence});}
+  candidates.sort((a,b)=>b.score-a.score);const best=candidates[0],second=candidates[1];if(!best||best.score<=0)return{person:null,score:0,matchType:"NO_MATCH",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:["No reliable tracker candidate found."]};const margin=second?best.score-second.score:1;if(best.status==="MATCHED"){if(best.score<config.acceptScore)return{person:best.person,score:best.score,matchType:"REVIEW_LOW_SCORE_STRICT_NAME",status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`Review only: strict score ${best.score.toFixed(2)} below threshold ${config.acceptScore.toFixed(2)}.`])};if(margin<config.margin)return{person:best.person,score:best.score,matchType:"REVIEW_AMBIGUOUS_CANDIDATES",status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`Review only: best candidate too close to second. Margin ${margin.toFixed(3)}.`,second?`Second candidate: ${second.person.name.fullName||second.person.email}, score ${second.score.toFixed(2)}.`:""]).filter(Boolean)};return{person:best.person,score:best.score,matchType:best.matchType,status:"MATCHED",suggestedLabel:best.suggestedLabel,evidence:best.evidence};}if(best.status==="REVIEW"&&best.score>=config.reviewScore)return{person:best.person,score:best.score,matchType:best.matchType,status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`Candidate tracker label is ${best.person.label}, but it is not applied automatically.`])};return{person:best.person,score:best.score,matchType:"NO_MATCH",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`No match accepted. Best candidate score ${best.score.toFixed(2)}.`])};}
+function dClassifyAll(){const trackerFile=dFiles[dTrackerIndex];if(!trackerFile)throw new Error("Select a tracker file.");if(!trackerFile.mapping.isDoctor)throw new Error(`Selected tracker "${trackerFile.name}" has no mapped user_data.is_doctor column.`);const tracker=dBuildTracker(trackerFile);const res=[];for(const file of dFiles){for(const row of file.rows){const isTracker=file===trackerFile;let m,inputName=parsePersonName(file,row);if(isTracker){const p={source_file:file.name,row_number:row.__row_number,row,email:compact(getMapped(file,row,"email")),name:inputName,doctorValue:getMapped(file,row,"isDoctor"),label:classifyDoctorValue(getMapped(file,row,"isDoctor"))};m={person:p,score:1,matchType:"TRACKER_SELF",status:"MATCHED",suggestedLabel:p.label,evidence:["This row comes from the selected tracker file."]};}else m=dFindMatch(file,row,tracker);const p=m.person;res.push({id:`${file.name}::${row.__row_number}`,source_file:file.name,row_number:row.__row_number,is_tracker_row:isTracker,input_email:compact(getMapped(file,row,"email")),input_name:inputName.fullName,dirty_text:getDirtyText(file,row),matched_email:p?p.email:"",matched_name:p?p.name.fullName:"",candidate_label:p?p.label:"",tracker_doctor_value:p?p.doctorValue:"",suggested_label:m.suggestedLabel||"UNKNOWN",confidence:p?(m.matchType==="EXACT_EMAIL"||m.matchType==="TRACKER_SELF"?1:Number(m.score.toFixed(3))):Number((m.score||0).toFixed(3)),match_type:m.matchType,match_status:m.status,evidence:m.evidence,original:row,original_preview:previewOriginal(file,row)});}}return res;}
+function dFilterDefs(){return[["","All",r=>true],["MATCHED","Accepted",r=>r.match_status==="MATCHED"],["REVIEW","Review",r=>r.match_status==="REVIEW"],["UNMATCHED","Unmatched",r=>r.match_status==="UNMATCHED"],["DOCTOR_CERTAIN","Doctors",r=>dEffective(r)==="DOCTOR_CERTAIN"],["PATIENT_CERTAIN","Patients",r=>dEffective(r)==="PATIENT_CERTAIN"],["UNKNOWN","Unknown",r=>dEffective(r)==="UNKNOWN"],["EXCLUDE","Excluded",r=>dEffective(r)==="EXCLUDE"],["EDITED","Edited",r=>dManual.has(r.id)],["EXACT_EMAIL","Exact email",r=>r.match_type==="EXACT_EMAIL"],["FUZZY","Name/fuzzy",r=>dIsFuzzy(r)]];}
+function dApply(){const q=norm(document.getElementById("dSearch").value),lab=document.getElementById("dLabelFilter").value,def=dFilterDefs().find(([k])=>k===dActiveFilter),fn=def?def[2]:(()=>true);dVisible=dAll.filter(r=>dFileInScope(r)&&fn(r)&&(!lab||dEffective(r)===lab)&&(!q||norm([r.source_file,r.input_email,r.input_name,r.dirty_text,r.matched_email,r.matched_name,r.suggested_label,dEffective(r),r.match_type,r.match_status,r.evidence.join(" ")].join(" ")).includes(q)));dRenderSummary();dRenderPills();dRenderTable();}
+function dRenderSummary(){const scope=dScoped();const c={rows:scope.length,visible:dVisible.length,matched:scope.filter(r=>r.match_status==="MATCHED").length,review:scope.filter(r=>r.match_status==="REVIEW").length,unmatched:scope.filter(r=>r.match_status==="UNMATCHED").length,doctors:scope.filter(r=>dEffective(r)==="DOCTOR_CERTAIN").length,patients:scope.filter(r=>dEffective(r)==="PATIENT_CERTAIN").length,unknown:scope.filter(r=>dEffective(r)==="UNKNOWN").length,edited:scope.filter(r=>dManual.has(r.id)).length,empty:dFiles.reduce((a,f)=>a+f.skippedEmptyRows,0),fuzzy:scope.filter(dIsFuzzy).length};renderCards("dSummary",[["Rows",c.rows],["Visible",c.visible],["Accepted",c.matched],["Review",c.review],["Unmatched",c.unmatched],["Doctors",c.doctors],["Patients",c.patients],["Unknown",c.unknown],["Edited",c.edited],["Empty skipped",c.empty],["Fuzzy/name",c.fuzzy]]);}
+function renderCards(id,cards){document.getElementById(id).innerHTML=cards.map(([l,v])=>`<div class="card"><div class="value">${escapeHtml(v)}</div><div class="label">${escapeHtml(l)}</div></div>`).join("");}
+function dRenderPills(){const scope=dScoped();document.getElementById("dPills").innerHTML=dFilterDefs().map(([key,label,fn])=>`<span class="pill ${dActiveFilter===key?"active":""}" data-filter="${escapeHtml(key)}">${escapeHtml(label)} ${scope.filter(fn).length}</span>`).join("");document.querySelectorAll("#dPills .pill").forEach(el=>el.onclick=()=>{dActiveFilter=el.dataset.filter;dApply();});}
+function activeDFileLabel(){if(dActiveFile==="__INPUTS__")return"all input files";if(dActiveFile==="__ALL__")return"all files";return dActiveFile;}
+function dRenderTable(){const tbody=document.getElementById("dTbody");document.getElementById("dTableInfo").textContent=`${dVisible.length} visible rows. Scope: ${activeDFileLabel()}.`;if(!dVisible.length){tbody.innerHTML='<tr><td colspan="7" class="small">No rows match this view.</td></tr>';return;}tbody.innerHTML=dVisible.map(r=>renderRow(r,dEffective,dManual,"d")).join("");document.querySelectorAll("#dTbody select[data-review-id]").forEach(sel=>sel.onchange=()=>{if(sel.value)dManual.set(sel.dataset.reviewId,sel.value);else dManual.delete(sel.dataset.reviewId);dApply();});}
+function renderRow(r,effectiveFn,manualMap,prefix){const eff=effectiveFn(r),manual=manualMap.get(r.id)||"";const preview=r.original_preview.map(([h,v])=>`<div class="kv"><strong>${escapeHtml(h)}:</strong> ${escapeHtml(v)}</div>`).join("");const evidence=r.evidence.map(e=>`<div class="kv">• ${escapeHtml(e)}</div>`).join("");const labels=prefix==="c"?COMM_LABELS:LABELS;return`<tr><td><span class="badge ${statusClass(r.match_status)}">${escapeHtml(r.match_status)}</span><div class="small">${escapeHtml(r.confidence)}</div></td><td><span class="badge ${labelClass(r.suggested_label)}">${escapeHtml(r.suggested_label)}</span><select class="reviewselect" data-review-id="${escapeHtml(r.id)}"><option value="" ${manual===""?"selected":""}>Use suggestion</option>${labels.map(l=>`<option value="${l}" ${manual===l?"selected":""}>${l}</option>`).join("")}</select><div style="margin-top:4px"><span class="badge ${labelClass(eff)}">effective: ${escapeHtml(eff)}</span></div></td><td><strong>${escapeHtml(r.input_name||"(no mapped name)")}</strong><div>${escapeHtml(r.input_email||"")}</div><details><summary>row text</summary><div class="small">${escapeHtml(r.dirty_text||"")}</div></details></td><td><strong>${escapeHtml(r.matched_name||"")}</strong><div>${escapeHtml(r.matched_email||"")}</div><div class="small">candidate label: ${escapeHtml(r.candidate_label||"")}</div></td><td>${escapeHtml(r.match_type)}</td><td><details open><summary>preview</summary>${preview||'<span class="small">No previewable values</span>'}</details><details><summary>evidence</summary>${evidence}</details></td><td>${escapeHtml(r.source_file)}<div class="small">row ${escapeHtml(r.row_number)}</div></td></tr>`;}
+function dRenderMapping(){const tracker=dFiles[dTrackerIndex];document.getElementById("dMappingPanel").innerHTML=dFiles.map((file,i)=>{const isTracker=file===tracker;const fields=isTracker?CANONICAL_FIELDS:CANONICAL_FIELDS.filter(f=>f!=="isDoctor");return fileCardHTML(file,i,fields,isTracker?"TRACKER":"INPUT",!file.mapping.email&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName?"No identity fields mapped. Dirty row text will only create review suggestions.":"",isTracker&&!file.mapping.isDoctor?"Tracker needs a mapped user_data.is_doctor column.":"","d");}).join("");document.querySelectorAll("#dMappingPanel select[data-file-index]").forEach(sel=>sel.onchange=()=>{dFiles[Number(sel.dataset.fileIndex)].mapping[sel.dataset.field]=sel.value;dRenderStatus();});}
+function fileCardHTML(file,i,fields,tag,warning,warning2,prefix){const labels={firstName:"first",lastName:"last",fullName:"full",isDoctor:"doctor?",customerName:"customer",company:"company",type:"type",note:"note",label:"label"};const rows=fields.map(f=>`<label>${escapeHtml(labels[f]||f)}</label><select data-file-index="${i}" data-field="${f}"><option value="">— none —</option>${file.headers.map(h=>`<option value="${escapeHtml(h)}" ${file.mapping[f]===h?"selected":""}>${escapeHtml(h)}</option>`).join("")}</select>`).join("");return`<div class="filecard"><h3>${escapeHtml(tag)} · ${escapeHtml(file.name)}</h3><div class="meta">${file.rows.length} non-empty · ${file.skippedEmptyRows} skipped</div><div class="mapgrid">${rows}</div>${warning?`<div class="warning">${escapeHtml(warning)}</div>`:""}${warning2?`<div class="warning">${warning2}</div>`:""}</div>`;}
+function dRenderStatus(){if(!dFiles.length){document.getElementById("dFileStatus").textContent="No files loaded.";return;}const tracker=dFiles[dTrackerIndex];document.getElementById("dFileStatus").innerHTML=dFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>${f===tracker?"TRACKER":"INPUT"} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");}
+function dPopulateTracker(){const sel=document.getElementById("dTrackerSelect");sel.innerHTML="";dFiles.forEach((f,i)=>{const opt=document.createElement("option");opt.value=String(i);opt.textContent=`${f.name}${f.mapping.isDoctor?" ✓ doctor field":""}`;sel.appendChild(opt);});const utenti=dFiles.findIndex(f=>f.name.toLowerCase().includes("utenti_app")),withDoc=dFiles.findIndex(f=>f.mapping.isDoctor);dTrackerIndex=utenti>=0?utenti:withDoc;if(dTrackerIndex<0&&dFiles.length)dTrackerIndex=0;sel.value=String(dTrackerIndex);sel.disabled=false;sel.onchange=()=>{dTrackerIndex=Number(sel.value);dRenderMapping();dRenderStatus();dPopulateFileFilter();if(dAll.length)dApply();};}
+function dPopulateFileFilter(){const sel=document.getElementById("dFileFilter");sel.innerHTML='<option value="__INPUTS__">All input files</option><option value="__ALL__">All files incl. tracker</option>';dFiles.forEach(f=>{const opt=document.createElement("option");opt.value=f.name;opt.textContent=f.name;sel.appendChild(opt);});dActiveFile="__INPUTS__";sel.value=dActiveFile;sel.disabled=false;sel.onchange=()=>{dActiveFile=sel.value;dApply();};}
+function dScopeFiles(){const tracker=dFiles[dTrackerIndex];if(dActiveFile==="__ALL__")return dFiles.slice();if(dActiveFile==="__INPUTS__")return dFiles.filter(f=>f!==tracker);return dFiles.filter(f=>f.name===dActiveFile);}
+function dRowsForMode(mode){if(mode==="current_view")return dVisible.slice();return dAll.filter(r=>{if(!dFileInScope(r))return false;if(["DOCTOR_CERTAIN","PATIENT_CERTAIN","UNKNOWN"].includes(mode))return dEffective(r)===mode;if(mode==="MATCHED")return r.match_status==="MATCHED";if(mode==="REVIEW")return r.match_status==="REVIEW";if(mode==="UNMATCHED")return r.match_status==="UNMATCHED";if(mode==="patients_removed")return dEffective(r)!=="PATIENT_CERTAIN"&&dEffective(r)!=="EXCLUDE";return false;});}
+function dDownloadOriginal(mode){for(const file of dScopeFiles()){const rows=dRowsForMode(mode).filter(r=>r.source_file===file.name);const msg=rows.length?null:`No rows exported from ${file.name}. Export mode: ${mode}.`;downloadText(`${file.name.replace(/\.csv$/i,"")}_${mode.toLowerCase()}.csv`,serializeOriginalRows(file,rows,msg));}}
+function serializeOriginalRows(file,rows,message){const headers=file.headers.length?file.headers.slice():[];if(message){const finalHeaders=headers.includes("__message")?headers:headers.concat(["__message"]);const blank=Object.fromEntries(finalHeaders.map(h=>[h,""]));blank.__message=message;return[finalHeaders.map(csvEscape).join(","),finalHeaders.map(h=>csvEscape(blank[h]??"")).join(",")].join("\n");}return[headers.map(csvEscape).join(","),...rows.map(r=>headers.map(h=>csvEscape(r.original[h]??"")).join(","))].join("\n");}
+document.getElementById("dLoad").onclick=async()=>{try{const files=document.getElementById("dFiles").files;if(!files.length){alert("Select at least one CSV file.");return;}dFiles=await loadCSVFiles(files,"file");dFiles.forEach(f=>f.mapping=autoMap(f,CANONICAL_FIELDS));dAll=[];dVisible=[];dManual.clear();dActiveFilter="";dActiveFile="__INPUTS__";dPopulateTracker();dPopulateFileFilter();dRenderMapping();dRenderStatus();document.getElementById("dRun").disabled=false;document.getElementById("dReset").disabled=false;}catch(e){console.error(e);alert(e.message||String(e));}};
+document.getElementById("dRun").onclick=()=>{try{dTrackerIndex=Number(document.getElementById("dTrackerSelect").value);dAll=dClassifyAll();dManual.clear();dActiveFilter="";document.getElementById("dSearch").disabled=false;document.getElementById("dLabelFilter").disabled=false;document.getElementById("dReport").disabled=false;document.getElementById("dViewReport").disabled=false;document.getElementById("dDownloadOriginal").disabled=false;document.getElementById("dExportMode").disabled=false;dApply();dRenderStatus();}catch(e){console.error(e);alert(e.message||String(e));}};
+document.getElementById("dReport").onclick=()=>downloadText("tracker_match_full_report.csv",reportCSV(dAll,"doctor"));
+document.getElementById("dViewReport").onclick=()=>downloadText("tracker_match_current_view_report.csv",reportCSV(dVisible,"doctor"));
+document.getElementById("dDownloadOriginal").onclick=()=>dDownloadOriginal(document.getElementById("dExportMode").value);
+document.getElementById("dReset").onclick=()=>{dActiveFilter="";dActiveFile="__INPUTS__";document.getElementById("dFileFilter").value=dActiveFile;document.getElementById("dSearch").value="";document.getElementById("dLabelFilter").value="";dApply();};
+document.getElementById("dSearch").oninput=()=>dApply();document.getElementById("dLabelFilter").onchange=()=>dApply();
+
+/* ---------- Commercial cleaning tab ---------- */
+let cRefFiles=[],cComFiles=[],cActiveFile="__ALL_COMMERCIAL__",cActiveFilter="",cAll=[],cVisible=[],cManual=new Map();
+function cEffective(r){return cManual.get(r.id)||r.suggested_label;}
+function cFileInScope(r){if(cActiveFile==="__ALL_COMMERCIAL__")return true;return r.source_file===cActiveFile;}
+function cScoped(){return cAll.filter(cFileInScope);}
+function cIsFuzzy(r){return r.match_type!=="EXACT_EMAIL"&&r.match_type!=="NO_MATCH";}
+function cBuildDoctorRefs(){const refs=[],byEmail=new Map();for(const file of cRefFiles){const hasLabel=Boolean(file.mapping.label||file.mapping.isDoctor);for(const row of file.rows){let keep=true,sourceLabel="ASSUMED_DOCTOR";if(file.mapping.label){sourceLabel=getMapped(file,row,"label");keep=labelLooksDoctor(sourceLabel);}else if(file.mapping.isDoctor){sourceLabel=getMapped(file,row,"isDoctor");keep=classifyDoctorValue(sourceLabel)==="DOCTOR_CERTAIN";}if(!keep)continue;const email=compact(getMapped(file,row,"email"));const name=parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),getMapped(file,row,"fullName"),getDirtyText(file,row));if(!email&&!name.fullName)continue;const ref={source_file:file.name,row_number:row.__row_number,row,email,name,sourceLabel,label:"DOCTOR_CERTAIN"};refs.push(ref);if(email)byEmail.set(email,ref);}}return{refs,byEmail};}
+function cParseCommercialName(file,row){const fullFromCustomer=getMapped(file,row,"customerName");const fallback=[getMapped(file,row,"customerName"),getMapped(file,row,"company"),getMapped(file,row,"note")].filter(Boolean).join(" ");return parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),getMapped(file,row,"fullName")||fullFromCustomer,fallback||getDirtyText(file,row));}
+function cFindMatch(file,row,doctorIndex){const email=compact(getMapped(file,row,"email"));const inputName=cParseCommercialName(file,row);const hasIdentity=Boolean(file.mapping.email||file.mapping.firstName||file.mapping.lastName||file.mapping.fullName||file.mapping.customerName);const config=fuzzyConfig("c");if(email&&doctorIndex.byEmail.has(email)){const p=doctorIndex.byEmail.get(email);return{person:p,score:1,matchType:"EXACT_EMAIL",status:"MATCHED",suggestedLabel:"DOCTOR_CERTAIN",evidence:[`Exact email match with verified doctor: ${email}`]};}const candidates=[];for(const p of doctorIndex.refs){let status="UNMATCHED",matchType="NO_MATCH",suggestedLabel="UNKNOWN",evidence=[],score=0;if(hasIdentity){const s=scoreNameMatch(inputName,p.name);score=s.score;evidence.push(s.reason);if(s.accepted){status="MATCHED";matchType="STRICT_DOCTOR_NAME_MATCH";suggestedLabel="DOCTOR_CERTAIN";}else if(s.review&&score>=config.reviewScore){status="REVIEW";matchType="REVIEW_DOCTOR_SURNAME_ONLY";}}else{const dirty=getDirtyText(file,row),tName=p.name.fullName;if(dirty&&tName&&dirty.includes(tName)&&tName.length>=5){score=.90;status="REVIEW";matchType="REVIEW_DIRTY_ROW_TEXT";evidence.push(`Commercial row text contains verified doctor name: "${tName}".`);evidence.push("Review only: no explicit commercial identity columns are mapped.");}}candidates.push({person:p,score,status,matchType,suggestedLabel,evidence});}
+  candidates.sort((a,b)=>b.score-a.score);const best=candidates[0],second=candidates[1];if(!best||best.score<=0)return{person:null,score:0,matchType:"NO_MATCH",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:["No verified doctor candidate found."]};const margin=second?best.score-second.score:1;if(best.status==="MATCHED"){if(best.score<config.acceptScore)return{person:best.person,score:best.score,matchType:"REVIEW_LOW_SCORE_DOCTOR_NAME",status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`Review only: strict doctor-name score ${best.score.toFixed(2)} below threshold.`])};if(margin<config.margin)return{person:best.person,score:best.score,matchType:"REVIEW_AMBIGUOUS_DOCTOR_CANDIDATES",status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`Review only: best doctor candidate too close to second. Margin ${margin.toFixed(3)}.`,second?`Second candidate: ${second.person.name.fullName||second.person.email}, score ${second.score.toFixed(2)}.`:""]).filter(Boolean)};return{person:best.person,score:best.score,matchType:best.matchType,status:"MATCHED",suggestedLabel:"DOCTOR_CERTAIN",evidence:best.evidence};}if(best.status==="REVIEW"&&best.score>=config.reviewScore)return{person:best.person,score:best.score,matchType:best.matchType,status:"REVIEW",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat(["Candidate is a verified doctor, but row is not marked DOCTOR_CERTAIN unless manually accepted."])};return{person:best.person,score:best.score,matchType:"NO_MATCH",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:best.evidence.concat([`No commercial doctor match accepted. Best score ${best.score.toFixed(2)}.`])};}
+function cClassifyAll(){if(!cRefFiles.length)throw new Error("Upload at least one doctor reference CSV.");if(!cComFiles.length)throw new Error("Upload at least one commercial CSV.");const idx=cBuildDoctorRefs();if(!idx.refs.length)throw new Error("No doctor reference rows found. Map reference name/email columns and, if using a label column, ensure doctor rows are labelled DOCTOR_CERTAIN/doctor/VERO/TRUE.");const res=[];for(const file of cComFiles){for(const row of file.rows){const inputName=cParseCommercialName(file,row);const m=cFindMatch(file,row,idx);const p=m.person;res.push({id:`${file.name}::${row.__row_number}`,source_file:file.name,row_number:row.__row_number,is_tracker_row:false,input_email:compact(getMapped(file,row,"email")),input_name:inputName.fullName,dirty_text:getDirtyText(file,row),matched_email:p?p.email:"",matched_name:p?p.name.fullName:"",candidate_label:p?"DOCTOR_CERTAIN":"",tracker_doctor_value:p?p.sourceLabel:"",suggested_label:m.suggestedLabel||"UNKNOWN",confidence:p?(m.matchType==="EXACT_EMAIL"?1:Number(m.score.toFixed(3))):Number((m.score||0).toFixed(3)),match_type:m.matchType,match_status:m.status,evidence:m.evidence,original:row,original_preview:previewOriginal(file,row)});}}return res;}
+function cFilterDefs(){return[["","All",r=>true],["MATCHED","Certain doctors",r=>r.match_status==="MATCHED"],["REVIEW","Review",r=>r.match_status==="REVIEW"],["UNMATCHED","Unmatched",r=>r.match_status==="UNMATCHED"],["DOCTOR_CERTAIN","Effective doctors",r=>cEffective(r)==="DOCTOR_CERTAIN"],["UNKNOWN","Unknown",r=>cEffective(r)==="UNKNOWN"],["EXCLUDE","Excluded",r=>cEffective(r)==="EXCLUDE"],["EDITED","Edited",r=>cManual.has(r.id)],["EXACT_EMAIL","Exact email",r=>r.match_type==="EXACT_EMAIL"],["NAME_MATCH","Name match",r=>r.match_type.includes("NAME")]];}
+function cApply(){const q=norm(document.getElementById("cSearch").value),lab=document.getElementById("cLabelFilter").value,def=cFilterDefs().find(([k])=>k===cActiveFilter),fn=def?def[2]:(()=>true);cVisible=cAll.filter(r=>cFileInScope(r)&&fn(r)&&(!lab||cEffective(r)===lab)&&(!q||norm([r.source_file,r.input_email,r.input_name,r.dirty_text,r.matched_email,r.matched_name,r.suggested_label,cEffective(r),r.match_type,r.match_status,r.evidence.join(" ")].join(" ")).includes(q)));cRenderSummary();cRenderPills();cRenderTable();}
+function cRenderSummary(){const scope=cScoped();const c={rows:scope.length,visible:cVisible.length,matched:scope.filter(r=>r.match_status==="MATCHED").length,review:scope.filter(r=>r.match_status==="REVIEW").length,unmatched:scope.filter(r=>r.match_status==="UNMATCHED").length,doctors:scope.filter(r=>cEffective(r)==="DOCTOR_CERTAIN").length,unknown:scope.filter(r=>cEffective(r)==="UNKNOWN").length,edited:scope.filter(r=>cManual.has(r.id)).length,empty:cComFiles.reduce((a,f)=>a+f.skippedEmptyRows,0),exact:scope.filter(r=>r.match_type==="EXACT_EMAIL").length,fuzzy:scope.filter(cIsFuzzy).length};renderCards("cSummary",[["Rows",c.rows],["Visible",c.visible],["Certain doctors",c.matched],["Review",c.review],["Unmatched",c.unmatched],["Effective doctors",c.doctors],["Unknown",c.unknown],["Edited",c.edited],["Empty skipped",c.empty],["Exact email",c.exact],["Name/fuzzy",c.fuzzy]]);}
+function cRenderPills(){const scope=cScoped();document.getElementById("cPills").innerHTML=cFilterDefs().map(([key,label,fn])=>`<span class="pill ${cActiveFilter===key?"active":""}" data-filter="${escapeHtml(key)}">${escapeHtml(label)} ${scope.filter(fn).length}</span>`).join("");document.querySelectorAll("#cPills .pill").forEach(el=>el.onclick=()=>{cActiveFilter=el.dataset.filter;cApply();});}
+function cRenderTable(){const tbody=document.getElementById("cTbody");document.getElementById("cTableInfo").textContent=`${cVisible.length} visible commercial rows. Review suggestions remain UNKNOWN unless manually changed.`;if(!cVisible.length){tbody.innerHTML='<tr><td colspan="7" class="small">No rows match this view.</td></tr>';return;}tbody.innerHTML=cVisible.map(r=>renderRow(r,cEffective,cManual,"c")).join("");document.querySelectorAll("#cTbody select[data-review-id]").forEach(sel=>sel.onchange=()=>{if(sel.value)cManual.set(sel.dataset.reviewId,sel.value);else cManual.delete(sel.dataset.reviewId);cApply();});}
+function cRenderMapping(){let html="";html += cRefFiles.map((file,i)=>fileCardHTML(file,i,REF_FIELDS,"DOCTOR REF",!file.mapping.email&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName?"No identity fields mapped in doctor reference.":"",!file.mapping.label&&!file.mapping.isDoctor?"No label/doctor column mapped: all non-empty reference rows are assumed to be doctors.":"","cRef")).join("");html += cComFiles.map((file,i)=>fileCardHTML(file,i,COMMERCIAL_FIELDS,"COMMERCIAL",!file.mapping.email&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName&&!file.mapping.customerName?"No commercial identity fields mapped. Dirty row text will only create review suggestions.":"","","cCom")).join("");document.getElementById("cMappingPanel").innerHTML=html;document.querySelectorAll("#cMappingPanel select[data-file-index]").forEach(sel=>sel.onchange=()=>{const arr=sel.dataset.prefix==="cRef"?cRefFiles:cComFiles;arr[Number(sel.dataset.fileIndex)].mapping[sel.dataset.field]=sel.value;cRenderStatus();});}
+function cRenderStatus(){if(!cRefFiles.length&&!cComFiles.length){document.getElementById("cFileStatus").textContent="No files loaded.";return;}const refMsg=cRefFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>DOCTOR REF · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");const comMsg=cComFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>COMMERCIAL · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");document.getElementById("cFileStatus").innerHTML=[refMsg,comMsg].filter(Boolean).join("<hr style='border:0;border-top:2px solid #ddd;margin:8px 0'>");}
+function cPopulateFileFilter(){const sel=document.getElementById("cFileFilter");sel.innerHTML='<option value="__ALL_COMMERCIAL__">All commercial files</option>';cComFiles.forEach(f=>{const opt=document.createElement("option");opt.value=f.name;opt.textContent=f.name;sel.appendChild(opt);});cActiveFile="__ALL_COMMERCIAL__";sel.value=cActiveFile;sel.disabled=false;sel.onchange=()=>{cActiveFile=sel.value;cApply();};}
+function cRowsForMode(mode){if(mode==="current_view")return cVisible.slice();return cAll.filter(r=>{if(!cFileInScope(r))return false;if(mode==="DOCTOR_CERTAIN")return cEffective(r)==="DOCTOR_CERTAIN";if(mode==="REVIEW")return r.match_status==="REVIEW";if(mode==="UNKNOWN")return cEffective(r)==="UNKNOWN";if(mode==="all_except_exclude")return cEffective(r)!=="EXCLUDE";return false;});}
+function cScopeFiles(){if(cActiveFile==="__ALL_COMMERCIAL__")return cComFiles.slice();return cComFiles.filter(f=>f.name===cActiveFile);}
+function cDownloadOriginal(mode){for(const file of cScopeFiles()){const rows=cRowsForMode(mode).filter(r=>r.source_file===file.name);const msg=rows.length?null:`No commercial rows exported from ${file.name}. Export mode: ${mode}.`;downloadText(`${file.name.replace(/\.csv$/i,"")}_${mode.toLowerCase()}.csv`,serializeOriginalRows(file,rows,msg));}}
+document.getElementById("cLoad").onclick=async()=>{try{const refs=document.getElementById("cRefFiles").files,coms=document.getElementById("cComFiles").files;if(!refs.length){alert("Select at least one doctor reference CSV.");return;}if(!coms.length){alert("Select at least one commercial CSV.");return;}cRefFiles=await loadCSVFiles(refs,"doctor reference");cComFiles=await loadCSVFiles(coms,"commercial file");cRefFiles.forEach(f=>f.mapping=autoMap(f,REF_FIELDS));cComFiles.forEach(f=>f.mapping=autoMap(f,COMMERCIAL_FIELDS));cAll=[];cVisible=[];cManual.clear();cActiveFilter="";cActiveFile="__ALL_COMMERCIAL__";cPopulateFileFilter();cRenderMapping();cRenderStatus();document.getElementById("cRun").disabled=false;document.getElementById("cReset").disabled=false;}catch(e){console.error(e);alert(e.message||String(e));}};
+document.getElementById("cRun").onclick=()=>{try{cAll=cClassifyAll();cManual.clear();cActiveFilter="";document.getElementById("cSearch").disabled=false;document.getElementById("cLabelFilter").disabled=false;document.getElementById("cReport").disabled=false;document.getElementById("cViewReport").disabled=false;document.getElementById("cDownloadOriginal").disabled=false;document.getElementById("cExportMode").disabled=false;cApply();cRenderStatus();}catch(e){console.error(e);alert(e.message||String(e));}};
+document.getElementById("cReport").onclick=()=>downloadText("commercial_doctor_cleaning_report.csv",reportCSV(cAll,"commercial"));
+document.getElementById("cViewReport").onclick=()=>downloadText("commercial_doctor_current_view_report.csv",reportCSV(cVisible,"commercial"));
+document.getElementById("cDownloadOriginal").onclick=()=>cDownloadOriginal(document.getElementById("cExportMode").value);
+document.getElementById("cReset").onclick=()=>{cActiveFilter="";cActiveFile="__ALL_COMMERCIAL__";document.getElementById("cFileFilter").value=cActiveFile;document.getElementById("cSearch").value="";document.getElementById("cLabelFilter").value="";cApply();};
+document.getElementById("cSearch").oninput=()=>cApply();document.getElementById("cLabelFilter").onchange=()=>cApply();
 
-  const TRUE_VALUES = new Set(["vero", "true", "1", "yes", "y", "si", "sì", "doctor", "medico", "dottore"]);
-  const FALSE_VALUES = new Set(["falso", "false", "0", "no", "n", "patient", "paziente"]);
-  const LABELS = ["DOCTOR_CERTAIN", "PATIENT_CERTAIN", "UNKNOWN", "EXCLUDE"];
-  const CANONICAL_FIELDS = ["email", "firstName", "lastName", "fullName", "isDoctor"];
-
-  const ALIASES = {
-    email: ["email", "email_lc", "e-mail", "indirizzo e-mail", "indirizzo email", "email address", "mail", "e_mail"],
-    firstName: ["first_name", "first name", "firstname", "nome", "given name", "forename", "user_data.first_name"],
-    lastName: ["last_name", "last name", "lastname", "surname", "cognome", "family name", "last", "user_data.last_name"],
-    fullName: ["nome e cognome", "full_name", "full name", "customer name", "referente", "contact name", "nominativo", "name and surname", "nome completo"],
-    isDoctor: ["user_data.is_doctor", "is_doctor", "is doctor"]
-  };
-
-  let parsedFiles = [];
-  let trackerFileIndex = -1;
-  let activeFile = "__INPUTS__";
-  let activeFilter = "";
-  let allResults = [];
-  let visibleResults = [];
-  let manualLabels = new Map();
-
-  function norm(value) {
-    return String(value ?? "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}@.+\-\s]/gu, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function compact(value) {
-    return norm(value).replace(/[^a-z0-9@.+-]/g, "");
-  }
-
-  function splitTokens(value) {
-    return norm(value).split(/\s+/).map(x => x.trim()).filter(x => x.length >= 2);
-  }
-
-  function dedupeConsecutive(tokens) {
-    const out = [];
-    for (const t of tokens) {
-      if (!out.length || out[out.length - 1] !== t) out.push(t);
-    }
-    return out;
-  }
-
-  function uniqueHeaders(rawHeaders, maxLen) {
-    const result = [];
-    const seen = new Map();
-    for (let i = 0; i < maxLen; i++) {
-      let base = String(rawHeaders[i] || `column_${i + 1}`).replace(/^\ufeff/, "").trim();
-      if (!base) base = `column_${i + 1}`;
-      const count = seen.get(base) || 0;
-      seen.set(base, count + 1);
-      result.push(count ? `${base}_${count + 1}` : base);
-    }
-    return result;
-  }
-
-  function rowIsEmpty(row, headers) {
-    return headers.every(h => String(row[h] ?? "").trim() === "");
-  }
-
-  function detectDelimiter(text) {
-    const firstLine = text.split(/\r?\n/).find(l => l.trim()) || "";
-    const candidates = [",", ";", "\t"];
-    let best = ",", bestCount = -1;
-    for (const d of candidates) {
-      let count = 0, inQuotes = false;
-      for (const c of firstLine) {
-        if (c === '"') inQuotes = !inQuotes;
-        else if (c === d && !inQuotes) count++;
-      }
-      if (count > bestCount) {
-        best = d;
-        bestCount = count;
-      }
-    }
-    return best;
-  }
-
-  function parseCSV(text) {
-    text = text.replace(/^\ufeff/, "");
-    const delimiter = detectDelimiter(text);
-    const rawRows = [];
-    let row = [], field = "", inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i], n = text[i + 1];
-
-      if (c === '"' && inQuotes && n === '"') {
-        field += '"';
-        i++;
-        continue;
-      }
-
-      if (c === '"') {
-        inQuotes = !inQuotes;
-        continue;
-      }
-
-      if (c === delimiter && !inQuotes) {
-        row.push(field);
-        field = "";
-        continue;
-      }
-
-      if ((c === "\n" || c === "\r") && !inQuotes) {
-        if (c === "\r" && n === "\n") i++;
-        rawRows.push(row.concat([field]));
-        row = [];
-        field = "";
-        continue;
-      }
-
-      field += c;
-    }
-
-    rawRows.push(row.concat([field]));
-
-    while (rawRows.length && rawRows[rawRows.length - 1].every(v => String(v ?? "").trim() === "")) {
-      rawRows.pop();
-    }
-
-    if (!rawRows.length) {
-      return { headers: [], rows: [], skippedEmptyRows: 0, totalDataRows: 0, delimiter };
-    }
-
-    const maxLen = Math.max(...rawRows.map(r => r.length));
-    const headers = uniqueHeaders(rawRows[0], maxLen);
-    const rows = [];
-    let skippedEmptyRows = 0;
-
-    for (let i = 1; i < rawRows.length; i++) {
-      const obj = {};
-      headers.forEach((h, j) => obj[h] = rawRows[i][j] ?? "");
-      obj.__row_number = i + 1;
-
-      if (rowIsEmpty(obj, headers)) {
-        skippedEmptyRows++;
-        continue;
-      }
-
-      rows.push(obj);
-    }
-
-    return { headers, rows, skippedEmptyRows, totalDataRows: rawRows.length - 1, delimiter };
-  }
-
-  function classifyDoctorValue(value) {
-    const v = norm(value);
-    if (TRUE_VALUES.has(v)) return "DOCTOR_CERTAIN";
-    if (FALSE_VALUES.has(v)) return "PATIENT_CERTAIN";
-    return "UNKNOWN";
-  }
-
-  function headerMatches(header, aliases) {
-    const h = norm(header);
-    return aliases.some(a => h === norm(a));
-  }
-
-  function findHeader(headers, aliases) {
-    return headers.find(h => headerMatches(h, aliases)) || "";
-  }
-
-  function findHeaderByPredicate(headers, predicate) {
-    return headers.find(h => predicate(norm(h), h)) || "";
-  }
-
-  function autoMapFile(file) {
-    const headers = file.headers;
-    const email = findHeaderByPredicate(headers, h => h.includes("email") || h === "mail" || h.includes("e mail"));
-    const isDoctor = findHeader(headers, ALIASES.isDoctor);
-
-    const lastName = findHeader(headers, ALIASES.lastName);
-    let firstName = findHeader(headers, ALIASES.firstName);
-    let fullName = findHeader(headers, ALIASES.fullName);
-
-    const genericName = findHeaderByPredicate(headers, h => ["name", "nome"].includes(h));
-    const genericSurname = lastName;
-
-    if (!firstName && genericName && genericSurname) firstName = genericName;
-    if (!fullName && genericName && !genericSurname && !firstName) fullName = genericName;
-
-    return { email, firstName, lastName, fullName, isDoctor };
-  }
-
-  function getMappedValue(file, row, field) {
-    const header = file.mapping[field];
-    return header ? (row[header] ?? "") : "";
-  }
-
-  function getEmail(file, row) {
-    return compact(getMappedValue(file, row, "email"));
-  }
-
-  function getDoctorValue(file, row) {
-    return getMappedValue(file, row, "isDoctor");
-  }
-
-  function getDirtyRowText(file, row) {
-    return norm(file.headers.map(h => row[h]).filter(v => String(v ?? "").trim() !== "").join(" "));
-  }
-
-  function hasMappedIdentity(file) {
-    return Boolean(file.mapping.email || file.mapping.firstName || file.mapping.lastName || file.mapping.fullName);
-  }
-
-  function parsePersonName(file, row) {
-    const firstRaw = norm(getMappedValue(file, row, "firstName"));
-    const lastRaw = norm(getMappedValue(file, row, "lastName"));
-    const fullRaw = norm(getMappedValue(file, row, "fullName"));
-
-    let firstTokens = splitTokens(firstRaw);
-    let lastTokens = splitTokens(lastRaw);
-    let fullTokens = splitTokens(fullRaw);
-
-    // Fix duplicated tracker names such as "alessandro fragnoli" + "fragnoli".
-    if (lastTokens.length && firstTokens.length >= lastTokens.length) {
-      const tail = firstTokens.slice(firstTokens.length - lastTokens.length).join(" ");
-      if (tail === lastTokens.join(" ")) {
-        firstTokens = firstTokens.slice(0, firstTokens.length - lastTokens.length);
-      }
-    }
-
-    let tokens;
-    if (fullTokens.length) {
-      tokens = fullTokens;
-    } else {
-      tokens = firstTokens.concat(lastTokens);
-    }
-
-    tokens = dedupeConsecutive(tokens);
-
-    let lastName = "";
-    let firstName = "";
-
-    if (lastTokens.length) {
-      lastName = lastTokens[lastTokens.length - 1];
-      firstName = firstTokens.join(" ");
-    } else if (tokens.length >= 2) {
-      lastName = tokens[tokens.length - 1];
-      firstName = tokens.slice(0, -1).join(" ");
-    } else if (tokens.length === 1) {
-      firstName = tokens[0];
-    }
-
-    const fullName = tokens.join(" ");
-
-    return {
-      firstName,
-      lastName,
-      fullName,
-      tokens,
-      firstTokens: splitTokens(firstName),
-      lastTokens: lastName ? [lastName] : [],
-      hasSeparateFirstLast: Boolean(file.mapping.firstName && file.mapping.lastName),
-      hasFullName: Boolean(file.mapping.fullName),
-      hasMappedIdentity: hasMappedIdentity(file)
-    };
-  }
-
-  function previewOriginal(file, row) {
-    const pairs = [];
-    for (const h of file.headers) {
-      const v = String(row[h] ?? "").trim();
-      if (v) pairs.push([h, v]);
-      if (pairs.length >= 7) break;
-    }
-    return pairs;
-  }
-
-  async function loadFiles(fileList) {
-    const files = [];
-    for (const file of Array.from(fileList)) {
-      if (!file.name.toLowerCase().endsWith(".csv")) {
-        throw new Error(`Unsupported file "${file.name}". Export XLS/XLSX to CSV first.`);
-      }
-
-      const text = await file.text();
-      const parsed = parseCSV(text);
-      const obj = {
-        name: file.name,
-        headers: parsed.headers,
-        rows: parsed.rows,
-        skippedEmptyRows: parsed.skippedEmptyRows,
-        totalDataRows: parsed.totalDataRows,
-        delimiter: parsed.delimiter,
-        mapping: {}
-      };
-      obj.mapping = autoMapFile(obj);
-      files.push(obj);
-    }
-    return files;
-  }
-
-  function fuzzyModeConfig() {
-    const mode = document.getElementById("fuzzyMode").value;
-    if (mode === "permissive") return { acceptScore: 0.84, reviewScore: 0.76, margin: 0.03 };
-    if (mode === "normal") return { acceptScore: 0.88, reviewScore: 0.80, margin: 0.04 };
-    return { acceptScore: 0.91, reviewScore: 0.84, margin: 0.05 };
-  }
-
-  function buildTracker(trackerFile) {
-    const people = [];
-    const byEmail = new Map();
-
-    for (const row of trackerFile.rows) {
-      const email = getEmail(trackerFile, row);
-      const name = parsePersonName(trackerFile, row);
-      const dirtyText = getDirtyRowText(trackerFile, row);
-      const doctorValue = getDoctorValue(trackerFile, row);
-      const label = classifyDoctorValue(doctorValue);
-
-      const person = {
-        source_file: trackerFile.name,
-        row_number: row.__row_number,
-        row,
-        email,
-        name,
-        dirtyText,
-        doctorValue,
-        label
-      };
-
-      people.push(person);
-      if (email) byEmail.set(email, person);
-    }
-
-    return { people, byEmail };
-  }
-
-  function levenshtein(a, b) {
-    a = norm(a); b = norm(b);
-    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-    for (let j = 1; j <= b.length; j++) dp[0][j] = j;
-
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,
-          dp[i][j - 1] + 1,
-          dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-        );
-      }
-    }
-    return dp[a.length][b.length];
-  }
-
-  function jaroWinkler(s1, s2) {
-    s1 = norm(s1);
-    s2 = norm(s2);
-    if (s1 === s2) return 1;
-    if (!s1 || !s2) return 0;
-
-    const len1 = s1.length, len2 = s2.length;
-    const matchDistance = Math.max(0, Math.floor(Math.max(len1, len2) / 2) - 1);
-    const s1Matches = new Array(len1).fill(false);
-    const s2Matches = new Array(len2).fill(false);
-
-    let matches = 0;
-
-    for (let i = 0; i < len1; i++) {
-      const start = Math.max(0, i - matchDistance);
-      const end = Math.min(i + matchDistance + 1, len2);
-      for (let j = start; j < end; j++) {
-        if (s2Matches[j] || s1[i] !== s2[j]) continue;
-        s1Matches[i] = true;
-        s2Matches[j] = true;
-        matches++;
-        break;
-      }
-    }
-
-    if (!matches) return 0;
-
-    let k = 0, transpositions = 0;
-    for (let i = 0; i < len1; i++) {
-      if (!s1Matches[i]) continue;
-      while (!s2Matches[k]) k++;
-      if (s1[i] !== s2[k]) transpositions++;
-      k++;
-    }
-
-    const m = matches;
-    const jaro = (m / len1 + m / len2 + (m - transpositions / 2) / m) / 3;
-
-    let prefix = 0;
-    for (let i = 0; i < Math.min(4, len1, len2); i++) {
-      if (s1[i] === s2[i]) prefix++;
-      else break;
-    }
-
-    return jaro + prefix * 0.1 * (1 - jaro);
-  }
-
-  function tokenOverlapScore(tokensA, tokensB) {
-    if (!tokensA.length || !tokensB.length) return 0;
-    const a = new Set(tokensA);
-    const b = new Set(tokensB);
-    let intersection = 0;
-    for (const t of a) if (b.has(t)) intersection++;
-    return intersection / Math.max(a.size, b.size);
-  }
-
-  function firstCompatible(input, tracker) {
-    if (!input.firstTokens.length || !tracker.firstTokens.length) {
-      return { ok: false, score: 0, reason: "missing first name" };
-    }
-
-    let best = 0;
-    for (const a of input.firstTokens) {
-      for (const b of tracker.firstTokens) {
-        best = Math.max(best, jaroWinkler(a, b));
-      }
-    }
-
-    return {
-      ok: best >= 0.88,
-      score: best,
-      reason: `first score ${best.toFixed(2)}`
-    };
-  }
-
-  function surnameCompatible(input, tracker) {
-    if (!input.lastName || !tracker.lastName) {
-      return { ok: false, score: 0, distance: null, reason: "missing surname" };
-    }
-
-    const a = input.lastName;
-    const b = tracker.lastName;
-
-    if (a === b) {
-      return { ok: true, score: 1, distance: 0, reason: "exact surname" };
-    }
-
-    if (a[0] !== b[0]) {
-      return { ok: false, score: 0, distance: levenshtein(a, b), reason: `surname first letter differs: ${a} vs ${b}` };
-    }
-
-    const distance = levenshtein(a, b);
-    const jw = jaroWinkler(a, b);
-    const maxLen = Math.max(a.length, b.length);
-
-    // Designed to accept "rosis" ↔ "rossi" and "marcheis" ↔ "marchesi",
-    // but reject "tiroli" ↔ "tiberti", "nota" ↔ "limonta", etc.
-    const ok = distance <= 1 || (maxLen >= 5 && distance <= 2 && jw >= 0.92);
-
-    return {
-      ok,
-      score: jw,
-      distance,
-      reason: `surname score ${jw.toFixed(2)}, distance ${distance}`
-    };
-  }
-
-  function scoreNameMatch(inputName, trackerName) {
-    const first = firstCompatible(inputName, trackerName);
-    const surname = surnameCompatible(inputName, trackerName);
-
-    if (!surname.ok) {
-      return {
-        accepted: false,
-        review: false,
-        score: Math.max(first.score * 0.35, surname.score),
-        reason: `Rejected: surname incompatible (${surname.reason}). Same/similar first name is not enough.`,
-        first,
-        surname
-      };
-    }
-
-    if (!first.ok) {
-      return {
-        accepted: false,
-        review: true,
-        score: surname.score * 0.75,
-        reason: `Review only: surname compatible but first name weak/missing (${first.reason}).`,
-        first,
-        surname
-      };
-    }
-
-    const tokenScore = tokenOverlapScore(inputName.tokens, trackerName.tokens);
-    const score = (0.58 * surname.score) + (0.32 * first.score) + (0.10 * tokenScore);
-
-    return {
-      accepted: true,
-      review: false,
-      score,
-      reason: `Accepted strict name gate: ${first.reason}; ${surname.reason}; token overlap ${tokenScore.toFixed(2)}.`,
-      first,
-      surname
-    };
-  }
-
-  function dirtyTextCandidateScore(file, row, trackerPerson) {
-    const dirtyText = getDirtyRowText(file, row);
-    const trackerName = trackerPerson.name.fullName;
-    if (!dirtyText || !trackerName) return { score: 0, evidence: "" };
-
-    if (dirtyText.includes(trackerName) && trackerName.length >= 5) {
-      return { score: 0.90, evidence: `Row text contains tracker name: "${trackerName}".` };
-    }
-
-    if (dirtyText.length <= 140) {
-      const s = jaroWinkler(dirtyText, trackerName);
-      if (s >= 0.86) {
-        return { score: s, evidence: `Dirty row-text fuzzy score ${s.toFixed(2)}: "${dirtyText}" ↔ "${trackerName}".` };
-      }
-    }
-
-    return { score: 0, evidence: "" };
-  }
-
-  function findBestTrackerMatch(file, row, tracker) {
-    const email = getEmail(file, row);
-    const inputName = parsePersonName(file, row);
-    const hasExplicitIdentity = inputName.hasMappedIdentity;
-    const config = fuzzyModeConfig();
-
-    if (email && tracker.byEmail.has(email)) {
-      const person = tracker.byEmail.get(email);
-      return {
-        person,
-        score: 1,
-        matchType: "EXACT_EMAIL",
-        status: "MATCHED",
-        suggestedLabel: person.label,
-        evidence: [`Exact email match: ${email}`]
-      };
-    }
-
-    const candidates = [];
-
-    for (const person of tracker.people) {
-      let status = "UNMATCHED";
-      let matchType = "NO_MATCH";
-      let suggestedLabel = "UNKNOWN";
-      let evidence = [];
-      let score = 0;
-
-      if (hasExplicitIdentity) {
-        const s = scoreNameMatch(inputName, person.name);
-        score = s.score;
-        evidence.push(s.reason);
-
-        if (s.accepted) {
-          status = "MATCHED";
-          matchType = "STRICT_FIRST_LAST_SURNAME_GATE";
-          suggestedLabel = person.label;
-        } else if (s.review && score >= config.reviewScore) {
-          status = "REVIEW";
-          matchType = "REVIEW_SURNAME_ONLY";
-          suggestedLabel = "UNKNOWN";
-        }
-      } else {
-        const dirty = dirtyTextCandidateScore(file, row, person);
-        score = dirty.score;
-        if (dirty.score > 0) {
-          status = "REVIEW";
-          matchType = "REVIEW_DIRTY_ROW_TEXT";
-          suggestedLabel = "UNKNOWN";
-          evidence.push(dirty.evidence);
-          evidence.push("Review only: no explicit identity columns are mapped for this file.");
-        }
-      }
-
-      candidates.push({ person, score, status, matchType, suggestedLabel, evidence });
-    }
-
-    candidates.sort((a, b) => b.score - a.score);
-    const best = candidates[0];
-    const second = candidates[1];
-
-    if (!best || best.score <= 0) {
-      return {
-        person: null,
-        score: 0,
-        matchType: "NO_MATCH",
-        status: "UNMATCHED",
-        suggestedLabel: "UNKNOWN",
-        evidence: ["No reliable tracker candidate found."]
-      };
-    }
-
-    const margin = second ? best.score - second.score : 1;
-
-    if (best.status === "MATCHED") {
-      if (best.score < config.acceptScore) {
-        return {
-          person: best.person,
-          score: best.score,
-          matchType: "REVIEW_LOW_SCORE_STRICT_NAME",
-          status: "REVIEW",
-          suggestedLabel: "UNKNOWN",
-          evidence: best.evidence.concat([
-            `Review only: strict-name score ${best.score.toFixed(2)} is below ${document.getElementById("fuzzyMode").value} acceptance threshold ${config.acceptScore.toFixed(2)}.`
-          ])
-        };
-      }
-
-      if (margin < config.margin) {
-        return {
-          person: best.person,
-          score: best.score,
-          matchType: "REVIEW_AMBIGUOUS_CANDIDATES",
-          status: "REVIEW",
-          suggestedLabel: "UNKNOWN",
-          evidence: best.evidence.concat([
-            `Review only: best candidate is too close to second candidate. Margin ${margin.toFixed(3)}.`,
-            second ? `Second candidate: ${second.person.name.fullName || second.person.email}, score ${second.score.toFixed(2)}.` : ""
-          ]).filter(Boolean)
-        };
-      }
-
-      return {
-        person: best.person,
-        score: best.score,
-        matchType: best.matchType,
-        status: "MATCHED",
-        suggestedLabel: best.suggestedLabel,
-        evidence: best.evidence
-      };
-    }
-
-    if (best.status === "REVIEW" && best.score >= config.reviewScore) {
-      return {
-        person: best.person,
-        score: best.score,
-        matchType: best.matchType,
-        status: "REVIEW",
-        suggestedLabel: "UNKNOWN",
-        evidence: best.evidence.concat([
-          `Candidate tracker label is ${best.person.label}, but it is not applied automatically.`
-        ])
-      };
-    }
-
-    return {
-      person: best.person,
-      score: best.score,
-      matchType: "NO_MATCH",
-      status: "UNMATCHED",
-      suggestedLabel: "UNKNOWN",
-      evidence: best.evidence.concat([
-        `No match accepted. Best candidate score ${best.score.toFixed(2)} in ${document.getElementById("fuzzyMode").value} mode.`
-      ])
-    };
-  }
-
-  function classifyAll() {
-    const trackerFile = parsedFiles[trackerFileIndex];
-    if (!trackerFile) throw new Error("Select a tracker file.");
-    if (!trackerFile.mapping.isDoctor) {
-      throw new Error(`Selected tracker "${trackerFile.name}" has no mapped user_data.is_doctor column. Map it in the left panel.`);
-    }
-
-    const tracker = buildTracker(trackerFile);
-    const results = [];
-
-    for (const file of parsedFiles) {
-      for (const row of file.rows) {
-        const isTrackerRow = file === trackerFile;
-        let matched;
-        const inputName = parsePersonName(file, row);
-
-        if (isTrackerRow) {
-          const person = {
-            source_file: file.name,
-            row_number: row.__row_number,
-            row,
-            email: getEmail(file, row),
-            name: inputName,
-            doctorValue: getDoctorValue(file, row),
-            label: classifyDoctorValue(getDoctorValue(file, row))
-          };
-
-          matched = {
-            person,
-            score: 1,
-            matchType: "TRACKER_SELF",
-            status: "MATCHED",
-            suggestedLabel: person.label,
-            evidence: ["This row comes from the selected tracker file."]
-          };
-        } else {
-          matched = findBestTrackerMatch(file, row, tracker);
-        }
-
-        const person = matched.person;
-        const suggested = matched.suggestedLabel || (person ? person.label : "UNKNOWN");
-        const confidence = person
-          ? (matched.matchType === "EXACT_EMAIL" || matched.matchType === "TRACKER_SELF" ? 1 : Number(matched.score.toFixed(3)))
-          : Number((matched.score || 0).toFixed(3));
-
-        results.push({
-          id: `${file.name}::${row.__row_number}`,
-          source_file: file.name,
-          row_number: row.__row_number,
-          is_tracker_row: isTrackerRow,
-          input_email: getEmail(file, row),
-          input_name: inputName.fullName,
-          dirty_text: getDirtyRowText(file, row),
-          matched_email: person ? person.email : "",
-          matched_name: person ? person.name.fullName : "",
-          matched_first_name: person ? person.name.firstName : "",
-          matched_last_name: person ? person.name.lastName : "",
-          tracker_doctor_value: person ? person.doctorValue : "",
-          candidate_tracker_label: person ? person.label : "",
-          suggested_label: suggested,
-          confidence,
-          match_type: matched.matchType,
-          match_status: matched.status,
-          evidence: matched.evidence,
-          original: row,
-          original_preview: previewOriginal(file, row),
-          headers: file.headers
-        });
-      }
-    }
-
-    return results;
-  }
-
-  function effectiveLabel(result) {
-    return manualLabels.get(result.id) || result.suggested_label;
-  }
-
-  function fileInScope(result) {
-    if (activeFile === "__ALL__") return true;
-    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
-    return result.source_file === activeFile;
-  }
-
-  function scopedResults() {
-    return allResults.filter(fileInScope);
-  }
-
-  function isFuzzy(result) {
-    return result.match_type.includes("STRICT") ||
-           result.match_type.includes("FUZZY") ||
-           result.match_type.includes("TOKEN") ||
-           result.match_type.includes("DIRTY") ||
-           result.match_type.includes("REVIEW");
-  }
-
-  function filterDefinitions() {
-    return [
-      ["", "All", r => true],
-      ["MATCHED", "Accepted", r => r.match_status === "MATCHED"],
-      ["REVIEW", "Review", r => r.match_status === "REVIEW"],
-      ["UNMATCHED", "Unmatched", r => r.match_status === "UNMATCHED"],
-      ["DOCTOR_CERTAIN", "Doctors", r => effectiveLabel(r) === "DOCTOR_CERTAIN"],
-      ["PATIENT_CERTAIN", "Patients", r => effectiveLabel(r) === "PATIENT_CERTAIN"],
-      ["UNKNOWN", "Unknown", r => effectiveLabel(r) === "UNKNOWN"],
-      ["EXCLUDE", "Excluded", r => effectiveLabel(r) === "EXCLUDE"],
-      ["EDITED", "Edited", r => manualLabels.has(r.id)],
-      ["EXACT_EMAIL", "Exact email", r => r.match_type === "EXACT_EMAIL"],
-      ["FUZZY", "Name/fuzzy", r => isFuzzy(r)]
-    ];
-  }
-
-  function applyFilters() {
-    const q = norm(document.getElementById("search").value);
-    const label = document.getElementById("labelFilter").value;
-    const activeDef = filterDefinitions().find(([k]) => k === activeFilter);
-    const activeFn = activeDef ? activeDef[2] : (() => true);
-
-    visibleResults = allResults.filter(r => {
-      if (!fileInScope(r)) return false;
-      if (!activeFn(r)) return false;
-      if (label && effectiveLabel(r) !== label) return false;
-
-      if (q) {
-        const text = norm([
-          r.source_file,
-          r.input_email,
-          r.input_name,
-          r.dirty_text,
-          r.matched_email,
-          r.matched_name,
-          r.suggested_label,
-          effectiveLabel(r),
-          r.match_type,
-          r.match_status,
-          r.evidence.join(" ")
-        ].join(" "));
-        if (!text.includes(q)) return false;
-      }
-
-      return true;
-    });
-
-    renderSummary();
-    renderFilters();
-    renderTable();
-  }
-
-  function renderSummary() {
-    const scope = scopedResults();
-    const counts = {
-      rows: scope.length,
-      visible: visibleResults.length,
-      matched: scope.filter(r => r.match_status === "MATCHED").length,
-      review: scope.filter(r => r.match_status === "REVIEW").length,
-      unmatched: scope.filter(r => r.match_status === "UNMATCHED").length,
-      doctors: scope.filter(r => effectiveLabel(r) === "DOCTOR_CERTAIN").length,
-      patients: scope.filter(r => effectiveLabel(r) === "PATIENT_CERTAIN").length,
-      unknown: scope.filter(r => effectiveLabel(r) === "UNKNOWN").length,
-      edited: scope.filter(r => manualLabels.has(r.id)).length,
-      emptySkipped: parsedFiles.reduce((a, f) => a + f.skippedEmptyRows, 0),
-      fuzzy: scope.filter(isFuzzy).length
-    };
-
-    const cards = [
-      ["Rows", counts.rows],
-      ["Visible", counts.visible],
-      ["Accepted", counts.matched],
-      ["Review", counts.review],
-      ["Unmatched", counts.unmatched],
-      ["Doctors", counts.doctors],
-      ["Patients", counts.patients],
-      ["Unknown", counts.unknown],
-      ["Edited", counts.edited],
-      ["Empty skipped", counts.emptySkipped],
-      ["Fuzzy/name", counts.fuzzy]
-    ];
-
-    document.getElementById("summary").innerHTML = cards.map(([label, value]) => `
-      <div class="card"><div class="value">${escapeHtml(value)}</div><div class="label">${escapeHtml(label)}</div></div>
-    `).join("");
-  }
-
-  function renderFilters() {
-    const scope = scopedResults();
-    const html = filterDefinitions().map(([key, label, fn]) => {
-      const count = scope.filter(fn).length;
-      return `<span class="pill ${activeFilter === key ? "active" : ""}" data-filter="${escapeHtml(key)}">${escapeHtml(label)} ${count}</span>`;
-    }).join("");
-
-    document.getElementById("filterPills").innerHTML = html;
-    document.querySelectorAll(".pill").forEach(el => {
-      el.onclick = () => {
-        activeFilter = el.dataset.filter;
-        applyFilters();
-      };
-    });
-  }
-
-  function labelClass(label) {
-    if (label === "DOCTOR_CERTAIN") return "doctor";
-    if (label === "PATIENT_CERTAIN") return "patient";
-    if (label === "EXCLUDE") return "exclude";
-    return "unknown";
-  }
-
-  function statusClass(status) {
-    if (status === "MATCHED") return "matched";
-    if (status === "REVIEW") return "review";
-    return "unmatched";
-  }
-
-  function renderTable() {
-    const tbody = document.getElementById("tbody");
-    document.getElementById("tableInfo").textContent =
-      `${visibleResults.length} visible rows. File scope: ${activeFileLabel()}. Accepted matches can export automatically; review suggestions stay UNKNOWN unless manually changed.`;
-
-    if (!visibleResults.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="small">No rows match this view. If you export, the CSV will contain an explanation row.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = visibleResults.map(r => {
-      const effective = effectiveLabel(r);
-      const manual = manualLabels.get(r.id) || "";
-      const preview = r.original_preview.map(([h, v]) => `<div class="kv"><strong>${escapeHtml(h)}:</strong> ${escapeHtml(v)}</div>`).join("");
-      const evidence = r.evidence.map(e => `<div class="kv">• ${escapeHtml(e)}</div>`).join("");
-
-      return `
-        <tr>
-          <td>
-            <span class="badge ${statusClass(r.match_status)}">${escapeHtml(r.match_status)}</span>
-            <div class="small">${escapeHtml(r.confidence)}</div>
-          </td>
-          <td>
-            <span class="badge ${labelClass(r.suggested_label)}">${escapeHtml(r.suggested_label)}</span>
-            <select class="review-select" data-review-id="${escapeHtml(r.id)}">
-              <option value="" ${manual === "" ? "selected" : ""}>Use suggestion</option>
-              ${LABELS.map(l => `<option value="${l}" ${manual === l ? "selected" : ""}>${l}</option>`).join("")}
-            </select>
-            <div style="margin-top:4px"><span class="badge ${labelClass(effective)}">effective: ${escapeHtml(effective)}</span></div>
-          </td>
-          <td>
-            <strong>${escapeHtml(r.input_name || "(no mapped name)")}</strong>
-            <div>${escapeHtml(r.input_email || "")}</div>
-            <details><summary>row text</summary><div class="small">${escapeHtml(r.dirty_text || "")}</div></details>
-          </td>
-          <td>
-            <strong>${escapeHtml(r.matched_name || "")}</strong>
-            <div>${escapeHtml(r.matched_email || "")}</div>
-            <div class="small">tracker value: ${escapeHtml(r.tracker_doctor_value || "")}</div>
-            <div class="small">candidate label: ${escapeHtml(r.candidate_tracker_label || "")}</div>
-          </td>
-          <td>${escapeHtml(r.match_type)}</td>
-          <td>
-            <details open><summary>preview</summary>${preview || '<span class="small">No previewable values</span>'}</details>
-            <details><summary>evidence</summary>${evidence}</details>
-          </td>
-          <td>
-            ${escapeHtml(r.source_file)}
-            <div class="small">row ${escapeHtml(r.row_number)}</div>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-    document.querySelectorAll("select[data-review-id]").forEach(sel => {
-      sel.onchange = () => {
-        if (sel.value) manualLabels.set(sel.dataset.reviewId, sel.value);
-        else manualLabels.delete(sel.dataset.reviewId);
-        applyFilters();
-      };
-    });
-  }
-
-  function activeFileLabel() {
-    if (activeFile === "__INPUTS__") return "all input files";
-    if (activeFile === "__ALL__") return "all files";
-    return activeFile;
-  }
-
-  function renderFileStatus() {
-    if (!parsedFiles.length) {
-      document.getElementById("fileStatus").textContent = "No files loaded.";
-      return;
-    }
-
-    const tracker = parsedFiles[trackerFileIndex];
-    const msg = parsedFiles.map(f => {
-      const mapped = Object.entries(f.mapping)
-        .filter(([, v]) => v)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(", ") || "none";
-      const tag = f === tracker ? "TRACKER" : "INPUT";
-      return `<div><strong>${escapeHtml(tag)} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;
-    }).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");
-
-    document.getElementById("fileStatus").innerHTML = msg;
-  }
-
-  function renderMappingPanel() {
-    const tracker = parsedFiles[trackerFileIndex];
-
-    document.getElementById("mappingPanel").innerHTML = parsedFiles.map((file, fileIndex) => {
-      const isTracker = file === tracker;
-      const fields = isTracker ? CANONICAL_FIELDS : CANONICAL_FIELDS.filter(f => f !== "isDoctor");
-
-      const fieldRows = fields.map(field => {
-        const label = field === "firstName" ? "first" :
-                      field === "lastName" ? "last" :
-                      field === "fullName" ? "full" :
-                      field === "isDoctor" ? "doctor?" : field;
-        return `
-          <label>${escapeHtml(label)}</label>
-          <select data-file-index="${fileIndex}" data-field="${field}">
-            <option value="">— none —</option>
-            ${file.headers.map(h => `<option value="${escapeHtml(h)}" ${file.mapping[field] === h ? "selected" : ""}>${escapeHtml(h)}</option>`).join("")}
-          </select>
-        `;
-      }).join("");
-
-      const warning = (!file.mapping.email && !file.mapping.firstName && !file.mapping.lastName && !file.mapping.fullName)
-        ? `<div class="warning">No identity fields mapped. Dirty row text will only create review suggestions, not automatic labels.</div>`
-        : "";
-
-      const trackerWarning = isTracker && !file.mapping.isDoctor
-        ? `<div class="warning">Tracker needs a mapped <code>user_data.is_doctor</code> column.</div>`
-        : "";
-
-      return `
-        <div class="file-card">
-          <h3>${escapeHtml(isTracker ? "TRACKER · " : "INPUT · ")}${escapeHtml(file.name)}</h3>
-          <div class="meta">${file.rows.length} non-empty · ${file.skippedEmptyRows} skipped</div>
-          <div class="mapping-grid">${fieldRows}</div>
-          ${warning}
-          ${trackerWarning}
-        </div>
-      `;
-    }).join("");
-
-    document.querySelectorAll("#mappingPanel select[data-file-index]").forEach(sel => {
-      sel.onchange = () => {
-        const file = parsedFiles[Number(sel.dataset.fileIndex)];
-        file.mapping[sel.dataset.field] = sel.value;
-        renderFileStatus();
-      };
-    });
-  }
-
-  function populateTrackerSelect() {
-    const select = document.getElementById("trackerSelect");
-    select.innerHTML = "";
-
-    parsedFiles.forEach((file, idx) => {
-      const opt = document.createElement("option");
-      opt.value = String(idx);
-      opt.textContent = `${file.name}${file.mapping.isDoctor ? " ✓ doctor field" : ""}`;
-      select.appendChild(opt);
-    });
-
-    const utenti = parsedFiles.findIndex(f => f.name.toLowerCase().includes("utenti_app"));
-    const withDoctor = parsedFiles.findIndex(f => f.mapping.isDoctor);
-    trackerFileIndex = utenti >= 0 ? utenti : withDoctor;
-    if (trackerFileIndex < 0 && parsedFiles.length) trackerFileIndex = 0;
-
-    select.value = String(trackerFileIndex);
-    select.disabled = false;
-    select.onchange = () => {
-      trackerFileIndex = Number(select.value);
-      renderMappingPanel();
-      renderFileStatus();
-      populateFileFilter();
-      if (allResults.length) applyFilters();
-    };
-  }
-
-  function populateFileFilter() {
-    const select = document.getElementById("fileFilter");
-    select.innerHTML = `
-      <option value="__INPUTS__">All input files</option>
-      <option value="__ALL__">All files incl. tracker</option>
-    `;
-
-    parsedFiles.forEach(f => {
-      const opt = document.createElement("option");
-      opt.value = f.name;
-      opt.textContent = f.name;
-      select.appendChild(opt);
-    });
-
-    activeFile = "__INPUTS__";
-    select.value = activeFile;
-    select.disabled = false;
-    select.onchange = () => {
-      activeFile = select.value;
-      applyFilters();
-    };
-  }
-
-  function scopeFilesForExport() {
-    const tracker = parsedFiles[trackerFileIndex];
-    if (activeFile === "__ALL__") return parsedFiles.slice();
-    if (activeFile === "__INPUTS__") return parsedFiles.filter(f => f !== tracker);
-    return parsedFiles.filter(f => f.name === activeFile);
-  }
-
-  function fileInExportScope(result) {
-    if (activeFile === "__ALL__") return true;
-    if (activeFile === "__INPUTS__") return !result.is_tracker_row;
-    return result.source_file === activeFile;
-  }
-
-  function rowsForExportMode(mode) {
-    if (mode === "current_view") return visibleResults.slice();
-
-    return allResults.filter(r => {
-      if (!fileInExportScope(r)) return false;
-
-      if (mode === "DOCTOR_CERTAIN" || mode === "PATIENT_CERTAIN" || mode === "UNKNOWN") {
-        return effectiveLabel(r) === mode;
-      }
-
-      if (mode === "MATCHED") return r.match_status === "MATCHED";
-      if (mode === "REVIEW") return r.match_status === "REVIEW";
-      if (mode === "UNMATCHED") return r.match_status === "UNMATCHED";
-
-      if (mode === "patients_removed") {
-        return effectiveLabel(r) !== "PATIENT_CERTAIN" && effectiveLabel(r) !== "EXCLUDE";
-      }
-
-      return false;
-    });
-  }
-
-  function serializeOriginalRows(file, rows, message) {
-    const headers = file.headers.length ? file.headers.slice() : [];
-    if (message) {
-      const finalHeaders = headers.includes("__message") ? headers : headers.concat(["__message"]);
-      const blank = Object.fromEntries(finalHeaders.map(h => [h, ""]));
-      blank.__message = message;
-      return [
-        finalHeaders.map(csvEscape).join(","),
-        finalHeaders.map(h => csvEscape(blank[h] ?? "")).join(",")
-      ].join("\n");
-    }
-
-    return [
-      headers.map(csvEscape).join(","),
-      ...rows.map(r => headers.map(h => csvEscape(r.original[h] ?? "")).join(","))
-    ].join("\n");
-  }
-
-  function downloadOriginalRows(mode) {
-    const files = scopeFilesForExport();
-    if (!files.length) {
-      alert("No files in the selected export scope.");
-      return;
-    }
-
-    const rows = rowsForExportMode(mode);
-
-    for (const file of files) {
-      const fileRows = rows.filter(r => r.source_file === file.name);
-      const message = fileRows.length
-        ? null
-        : `No rows exported from ${file.name}. Export mode: ${mode}. File scope: ${activeFileLabel()}. Review suggestions are not exported as doctor/patient unless manually changed.`;
-      const csv = serializeOriginalRows(file, fileRows, message);
-      const suffix = mode.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
-      const base = file.name.replace(/\.csv$/i, "");
-      downloadText(`${base}_${suffix || "export"}.csv`, csv);
-    }
-  }
-
-  function exportReportCSV(rows) {
-    const cols = [
-      "source_file", "row_number", "match_status",
-      "suggested_label", "user_label", "effective_label",
-      "confidence", "match_type",
-      "input_email", "input_name", "dirty_row_text",
-      "matched_tracker_email", "matched_tracker_name",
-      "candidate_tracker_label", "tracker_user_data_is_doctor", "evidence"
-    ];
-
-    const lines = [cols.join(",")];
-
-    if (!rows.length) {
-      const empty = Object.fromEntries(cols.map(c => [c, ""]));
-      empty.evidence = "No rows match this report/export view.";
-      lines.push(cols.map(c => csvEscape(empty[c])).join(","));
-      return lines.join("\n");
-    }
-
-    for (const r of rows) {
-      const obj = {
-        source_file: r.source_file,
-        row_number: r.row_number,
-        match_status: r.match_status,
-        suggested_label: r.suggested_label,
-        user_label: manualLabels.get(r.id) || "",
-        effective_label: effectiveLabel(r),
-        confidence: r.confidence,
-        match_type: r.match_type,
-        input_email: r.input_email,
-        input_name: r.input_name,
-        dirty_row_text: r.dirty_text,
-        matched_tracker_email: r.matched_email,
-        matched_tracker_name: r.matched_name,
-        candidate_tracker_label: r.candidate_tracker_label,
-        tracker_user_data_is_doctor: r.tracker_doctor_value,
-        evidence: r.evidence.join(" | ")
-      };
-
-      lines.push(cols.map(c => csvEscape(obj[c])).join(","));
-    }
-
-    return lines.join("\n");
-  }
-
-  function csvEscape(value) {
-    return `"${String(value ?? "").replace(/"/g, '""')}"`;
-  }
-
-  function downloadText(filename, content, mime = "text/csv;charset=utf-8") {
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  document.getElementById("scan").onclick = async () => {
-    try {
-      const files = document.getElementById("files").files;
-      if (!files.length) {
-        alert("Select at least one CSV file.");
-        return;
-      }
-
-      parsedFiles = await loadFiles(files);
-      allResults = [];
-      visibleResults = [];
-      manualLabels.clear();
-      activeFilter = "";
-      activeFile = "__INPUTS__";
-
-      populateTrackerSelect();
-      populateFileFilter();
-      renderMappingPanel();
-      renderFileStatus();
-
-      document.getElementById("run").disabled = false;
-      document.getElementById("reset").disabled = false;
-    } catch (err) {
-      console.error(err);
-      alert(err.message || String(err));
-    }
-  };
-
-  document.getElementById("run").onclick = () => {
-    try {
-      trackerFileIndex = Number(document.getElementById("trackerSelect").value);
-      allResults = classifyAll();
-      manualLabels.clear();
-      activeFilter = "";
-
-      document.getElementById("search").disabled = false;
-      document.getElementById("labelFilter").disabled = false;
-      document.getElementById("downloadReport").disabled = false;
-      document.getElementById("downloadCurrentView").disabled = false;
-      document.getElementById("downloadOriginal").disabled = false;
-      document.getElementById("exportMode").disabled = false;
-
-      applyFilters();
-      renderFileStatus();
-    } catch (err) {
-      console.error(err);
-      alert(err.message || String(err));
-    }
-  };
-
-  document.getElementById("downloadReport").onclick = () => {
-    downloadText("tracker_match_full_report.csv", exportReportCSV(allResults));
-  };
-
-  document.getElementById("downloadCurrentView").onclick = () => {
-    downloadText("tracker_match_current_view_report.csv", exportReportCSV(visibleResults));
-  };
-
-  document.getElementById("downloadOriginal").onclick = () => {
-    downloadOriginalRows(document.getElementById("exportMode").value);
-  };
-
-  document.getElementById("reset").onclick = () => {
-    activeFilter = "";
-    activeFile = "__INPUTS__";
-    document.getElementById("fileFilter").value = activeFile;
-    document.getElementById("search").value = "";
-    document.getElementById("labelFilter").value = "";
-    applyFilters();
-  };
-
-  document.getElementById("search").oninput = () => applyFilters();
-  document.getElementById("labelFilter").onchange = () => applyFilters();
 })();
 </script>
 </body>
