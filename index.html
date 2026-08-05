@@ -144,7 +144,7 @@ details{margin-top:4px} details summary{cursor:pointer;color:var(--blue);font-si
           <button id="cLoad" class="primary">Load commercial setup</button>
           <button id="cRun" class="primary" disabled>Find certain doctors</button>
         </div>
-        <div class="hint">Commercial cleaning now works name-only: use <code>HCP verificati</code> as a verified doctor-name list and <code>Vendite 2025</code> as commercial data. Map the doctor full-name column in the reference and the <code>Cliente</code> column in sales. No label/VERO/TRUE column is required.</div><div id="cMessage" class="errorbox hidden"></div>
+        <div class="hint">Commercial cleaning is manual-map and name-only. In the doctor reference, map <code>doctor name</code> to the verified full-name column, or map both <code>first</code> and <code>last</code>. In commercial data, map <code>customer</code> to the person/customer full-name column such as <code>Cliente</code>, or map both <code>first</code> and <code>last</code>. Titles such as Dott., Dr., and Prof. create review candidates and are ignored only for comparing the remaining name to the doctor master.</div><div id="cMessage" class="errorbox hidden"></div>
       </div>
       <div class="row" style="justify-content:flex-end">
         <button id="cReport" disabled>Cleaning report</button>
@@ -172,7 +172,7 @@ details{margin-top:4px} details summary{cursor:pointer;color:var(--blue);font-si
       </section>
       <section class="panel scroll">
         <strong style="font-size:14px">Column mapping</strong>
-        <div class="small" style="margin:4px 0 10px">Map doctor reference and commercial identity columns. Exports preserve original commercial columns.</div>
+        <div class="small" style="margin:4px 0 10px">Manual mapping is required before matching. Exports preserve original commercial columns.</div>
         <div id="cMappingPanel"></div>
       </section>
     </aside>
@@ -207,7 +207,7 @@ const ALIASES={
   lastName:["last_name","last name","lastname","surname","cognome","family name","last","user_data.last_name"],
   fullName:["nome e cognome","full_name","full name","customer name","referente","contact name","nominativo","name and surname","nome completo","input_name","matched_tracker_name","doctor_name","hcp name","hcp","nome hcp","hcp verificati"],
   isDoctor:["user_data.is_doctor","is_doctor","is doctor"],
-  doctorName:["hcp verificati","hcp","doctor name","doctor_name","nome hcp","nome medico","medico","dottore","full name","nome e cognome","input_name","matched_tracker_name","cliente"],
+  doctorName:["hcp verificati","hcp","doctor name","doctor_name","nome hcp","nome medico","medico","dottore","full name","nome e cognome","input_name","matched_tracker_name"],
   label:["label","effective_label","suggested_label","classification","class","status","user_label"],
   customerName:["cliente","customer","customer name","client","client name","nominativo","ragione sociale","denominazione","nome cliente"],
   company:["azienda","company","organization","organizzazione","account","default address company","societa","società"],
@@ -217,7 +217,13 @@ const ALIASES={
 function norm(v){return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^\p{L}\p{N}@.+\-\s]/gu," ").replace(/\s+/g," ").trim();}
 function compact(v){return norm(v).replace(/[^a-z0-9@.+-]/g,"");}
 function splitTokens(v){return norm(v).split(/\s+/).map(x=>x.trim()).filter(x=>x.length>=2);}
+const DOCTOR_TITLE_TOKENS=new Set(["dr","md","dott","dottor","dottore","dottoressa","dottssa","prof","professor","professore","professoressa","profssa"]);
+const NAME_STOP_TOKENS=new Set([...DOCTOR_TITLE_TOKENS,"ssa","sig","sigra","signor","signora"]);
+function rawNameTokens(v){return norm(v).replace(/[.@+_\/-]/g," ").split(/\s+/).map(x=>x.trim()).filter(x=>x.length>=2);}
+function doctorTitleTokens(v){return rawNameTokens(v).filter(t=>DOCTOR_TITLE_TOKENS.has(t));}
+function splitNameTokens(v){return rawNameTokens(v).filter(t=>!NAME_STOP_TOKENS.has(t));}
 function dedupeConsecutive(tokens){const out=[];for(const t of tokens){if(!out.length||out[out.length-1]!==t)out.push(t);}return out;}
+function tokenKey(tokens){return tokens.slice().sort().join("\u001f");}
 function csvEscape(v){return `"${String(v??"").replace(/"/g,'""')}"`;}
 function escapeHtml(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function labelClass(l){if(l==="DOCTOR_CERTAIN")return"doctor";if(l==="PATIENT_CERTAIN")return"patient";if(l==="EXCLUDE")return"exclude";return"unknown";}
@@ -242,16 +248,48 @@ function getMapped(file,row,field){const h=file.mapping[field];return h?(row[h]?
 function getDirtyText(file,row){return norm(file.headers.map(h=>row[h]).filter(v=>String(v??"").trim()!=="").join(" "));}
 function classifyDoctorValue(value){const v=norm(value);if(TRUE_VALUES.has(v))return"DOCTOR_CERTAIN";if(FALSE_VALUES.has(v))return"PATIENT_CERTAIN";return"UNKNOWN";}
 function labelLooksDoctor(value){const v=norm(value);return v==="doctor_certain"||v==="doctor"||v==="hcp"||v==="medico"||v==="dottore"||TRUE_VALUES.has(v);}
-function parseNameFromParts(firstRaw,lastRaw,fullRaw,fallbackRaw=""){let firstTokens=splitTokens(firstRaw),lastTokens=splitTokens(lastRaw),fullTokens=splitTokens(fullRaw);if(lastTokens.length&&firstTokens.length>=lastTokens.length){const tail=firstTokens.slice(firstTokens.length-lastTokens.length).join(" ");if(tail===lastTokens.join(" "))firstTokens=firstTokens.slice(0,firstTokens.length-lastTokens.length);}let tokens=fullTokens.length?fullTokens:firstTokens.concat(lastTokens);if(!tokens.length&&fallbackRaw)tokens=splitTokens(fallbackRaw);tokens=dedupeConsecutive(tokens);let lastName="",firstName="";if(lastTokens.length){lastName=lastTokens[lastTokens.length-1];firstName=firstTokens.join(" ");}else if(tokens.length>=2){lastName=tokens[tokens.length-1];firstName=tokens.slice(0,-1).join(" ");}else if(tokens.length===1){firstName=tokens[0];}return{firstName,lastName,fullName:tokens.join(" "),tokens,firstTokens:splitTokens(firstName),lastTokens:lastName?[lastName]:[]};}
+function makeParsedName(tokens,firstTokens,lastName,titleTokens=[]){
+  const firstName=firstTokens.join(" ");
+  return{firstName,lastName,fullName:tokens.join(" "),tokens,firstTokens,firstKey:tokenKey(firstTokens),lastTokens:lastName?[lastName]:[],doctorTitles:[...new Set(titleTokens)],hasDoctorTitle:titleTokens.length>0};
+}
+function parseNameFromParts(firstRaw,lastRaw,fullRaw,fallbackRaw=""){
+  const titleTokens=doctorTitleTokens([firstRaw,lastRaw,fullRaw,fallbackRaw].join(" "));
+  let firstTokens=splitNameTokens(firstRaw),lastTokens=splitNameTokens(lastRaw),fullTokens=splitNameTokens(fullRaw);
+  if(lastTokens.length&&firstTokens.length>=lastTokens.length){
+    const tail=firstTokens.slice(firstTokens.length-lastTokens.length).join(" ");
+    if(tail===lastTokens.join(" "))firstTokens=firstTokens.slice(0,firstTokens.length-lastTokens.length);
+  }
+  let tokens=fullTokens.length?fullTokens:firstTokens.concat(lastTokens);
+  if(!tokens.length&&fallbackRaw)tokens=splitNameTokens(fallbackRaw);
+  tokens=dedupeConsecutive(tokens);
+  const variants=[];
+  let primary;
+  if(lastTokens.length){
+    primary=makeParsedName(tokens,firstTokens,lastTokens[lastTokens.length-1],titleTokens);
+  }else if(tokens.length>=2){
+    primary=makeParsedName(tokens,tokens.slice(0,-1),tokens[tokens.length-1],titleTokens);
+    variants.push(makeParsedName(tokens,tokens.slice(1),tokens[0],titleTokens));
+  }else if(tokens.length===1){
+    primary=makeParsedName(tokens,tokens,"",titleTokens);
+  }else{
+    primary=makeParsedName([],[],"",titleTokens);
+  }
+  variants.unshift(primary);
+  const seen=new Set();
+  primary.variants=variants.filter(v=>{const key=`${v.lastName}|${v.firstKey}`;if(seen.has(key))return false;seen.add(key);return true;});
+  return primary;
+}
 function parsePersonName(file,row,extraFull=""){return parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),getMapped(file,row,"fullName"),extraFull);}
 function previewOriginal(file,row){const pairs=[];for(const h of file.headers){const v=String(row[h]??"").trim();if(v)pairs.push([h,v]);if(pairs.length>=7)break;}return pairs;}
 function levenshtein(a,b){a=norm(a);b=norm(b);const dp=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)dp[0][j]=j;for(let i=1;i<=a.length;i++){for(let j=1;j<=b.length;j++){dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));}}return dp[a.length][b.length];}
 function jaroWinkler(s1,s2){s1=norm(s1);s2=norm(s2);if(s1===s2)return 1;if(!s1||!s2)return 0;const len1=s1.length,len2=s2.length,md=Math.max(0,Math.floor(Math.max(len1,len2)/2)-1);const m1=new Array(len1).fill(false),m2=new Array(len2).fill(false);let matches=0;for(let i=0;i<len1;i++){const st=Math.max(0,i-md),en=Math.min(i+md+1,len2);for(let j=st;j<en;j++){if(m2[j]||s1[i]!==s2[j])continue;m1[i]=true;m2[j]=true;matches++;break;}}if(!matches)return 0;let k=0,tr=0;for(let i=0;i<len1;i++){if(!m1[i])continue;while(!m2[k])k++;if(s1[i]!==s2[k])tr++;k++;}const m=matches,jaro=(m/len1+m/len2+(m-tr/2)/m)/3;let prefix=0;for(let i=0;i<Math.min(4,len1,len2);i++){if(s1[i]===s2[i])prefix++;else break;}return jaro+prefix*.1*(1-jaro);}
 function tokenOverlapScore(aTokens,bTokens){if(!aTokens.length||!bTokens.length)return 0;const A=new Set(aTokens),B=new Set(bTokens);let inter=0;for(const t of A)if(B.has(t))inter++;return inter/Math.max(A.size,B.size);}
 function fuzzyConfig(prefix){const mode=document.getElementById(prefix+"FuzzyMode").value;if(mode==="permissive")return{acceptScore:.84,reviewScore:.76,margin:.03};if(mode==="normal")return{acceptScore:.88,reviewScore:.80,margin:.04};return{acceptScore:.91,reviewScore:.84,margin:.05};}
-function firstCompatible(input,tracker){if(!input.firstTokens.length||!tracker.firstTokens.length)return{ok:false,score:0,reason:"missing first name"};let best=0;for(const a of input.firstTokens)for(const b of tracker.firstTokens)best=Math.max(best,jaroWinkler(a,b));return{ok:best>=.88,score:best,reason:`first score ${best.toFixed(2)}`};}
+function firstCompatible(input,tracker){if(!input.firstTokens.length||!tracker.firstTokens.length)return{ok:false,score:0,reason:"missing first name"};const shorter=input.firstTokens.length<=tracker.firstTokens.length?input.firstTokens:tracker.firstTokens;const longer=input.firstTokens.length<=tracker.firstTokens.length?tracker.firstTokens:input.firstTokens;let total=0,matched=0;for(const a of shorter){let best=0;for(const b of longer)best=Math.max(best,jaroWinkler(a,b));total+=best;if(best>=.90)matched++;}const coverage=matched/shorter.length,completeness=matched/Math.max(input.firstTokens.length,tracker.firstTokens.length),avg=total/shorter.length,score=avg*(.85+.15*completeness);return{ok:coverage===1&&score>=.88,score,reason:`first score ${score.toFixed(2)}, matched ${matched}/${shorter.length}`};}
 function surnameCompatible(input,tracker){if(!input.lastName||!tracker.lastName)return{ok:false,score:0,distance:null,reason:"missing surname"};const a=input.lastName,b=tracker.lastName;if(a===b)return{ok:true,score:1,distance:0,reason:"exact surname"};if(a[0]!==b[0])return{ok:false,score:0,distance:levenshtein(a,b),reason:`surname first letter differs: ${a} vs ${b}`};const distance=levenshtein(a,b),jw=jaroWinkler(a,b),maxLen=Math.max(a.length,b.length);const ok=distance<=1||(maxLen>=5&&distance<=2&&jw>=.92);return{ok,score:jw,distance,reason:`surname score ${jw.toFixed(2)}, distance ${distance}`};}
-function scoreNameMatch(input,tracker){const first=firstCompatible(input,tracker),surname=surnameCompatible(input,tracker);if(!surname.ok)return{accepted:false,review:false,score:Math.max(first.score*.35,surname.score),reason:`Rejected: surname incompatible (${surname.reason}). Same/similar first name is not enough.`,first,surname};if(!first.ok)return{accepted:false,review:true,score:surname.score*.75,reason:`Review only: surname compatible but first name weak/missing (${first.reason}).`,first,surname};const tokenScore=tokenOverlapScore(input.tokens,tracker.tokens);const score=.58*surname.score+.32*first.score+.10*tokenScore;return{accepted:true,review:false,score,reason:`Accepted strict name gate: ${first.reason}; ${surname.reason}; token overlap ${tokenScore.toFixed(2)}.`,first,surname};}
+function scoreNameVariant(input,tracker){const first=firstCompatible(input,tracker),surname=surnameCompatible(input,tracker);if(!surname.ok)return{accepted:false,review:false,score:Math.max(first.score*.35,surname.score),reason:`Rejected: surname incompatible (${surname.reason}). Same/similar first name is not enough.`,first,surname};if(!first.ok)return{accepted:false,review:true,score:surname.score*.75,reason:`Review only: surname compatible but first name weak/missing (${first.reason}).`,first,surname};const tokenScore=tokenOverlapScore(input.tokens,tracker.tokens);const score=.58*surname.score+.32*first.score+.10*tokenScore;return{accepted:true,review:false,score,reason:`Accepted strict name gate: ${first.reason}; ${surname.reason}; token overlap ${tokenScore.toFixed(2)}.`,first,surname};}
+function scoreNameMatch(input,tracker){let best=null;const inputVariants=input.variants||[input],trackerVariants=tracker.variants||[tracker];for(const iv of inputVariants){for(const tv of trackerVariants){const scored=scoreNameVariant(iv,tv);const result={...scored,score:Number(scored.score.toFixed(6)),reason:`${scored.reason} Parsed as "${iv.firstName} / ${iv.lastName}" vs "${tv.firstName} / ${tv.lastName}".`};if(!best||result.score>best.score)best=result;}}return best||{accepted:false,review:false,score:0,reason:"Rejected: no usable name tokens.",first:{ok:false,score:0},surname:{ok:false,score:0}};}
+function exactNameMatch(input,reference){if(input.fullName&&reference.fullName&&norm(input.fullName)===norm(reference.fullName))return{ok:true,matchType:"EXACT_FULL_NAME",evidence:`Exact full-name match with HCP verificati: "${input.fullName}".`};if(input.tokens.length>=2&&reference.tokens.length>=2&&input.tokens.length===reference.tokens.length&&tokenKey(input.tokens)===tokenKey(reference.tokens))return{ok:true,matchType:"EXACT_NAME_TOKENS",evidence:`Exact name-token match with HCP verificati: "${input.fullName}" / "${reference.fullName}". This handles surname-first vs first-name-first CSV order.`};return{ok:false,matchType:""};}
 function serializeOriginalRows(file,rows,message){const headers=file.headers.length?file.headers.slice():[];if(message){const finalHeaders=headers.includes("__message")?headers:headers.concat(["__message"]);const blank=Object.fromEntries(finalHeaders.map(h=>[h,""]));blank.__message=message;return[finalHeaders.map(csvEscape).join(","),finalHeaders.map(h=>csvEscape(blank[h]??"")).join(",")].join("\n");}return[headers.map(csvEscape).join(","),...rows.map(r=>headers.map(h=>csvEscape(r.original[h]??"")).join(","))].join("\n");}
 function reportCSV(rows,mode="doctor"){const cols=["source_file","row_number","match_status","suggested_label","user_label","effective_label","confidence","match_type","input_email","input_name","dirty_row_text","matched_email","matched_name","candidate_label","evidence"];const lines=[cols.join(",")];if(!rows.length){const empty=Object.fromEntries(cols.map(c=>[c,""]));empty.evidence="No rows match this report/export view.";lines.push(cols.map(c=>csvEscape(empty[c])).join(","));return lines.join("\n");}for(const r of rows){const user=mode==="commercial"?(cManual.get(r.id)||""):(dManual.get(r.id)||"");const eff=mode==="commercial"?cEffective(r):dEffective(r);const obj={source_file:r.source_file,row_number:r.row_number,match_status:r.match_status,suggested_label:r.suggested_label,user_label:user,effective_label:eff,confidence:r.confidence,match_type:r.match_type,input_email:r.input_email,input_name:r.input_name,dirty_row_text:r.dirty_text,matched_email:r.matched_email,matched_name:r.matched_name,candidate_label:r.candidate_label,evidence:r.evidence.join(" | ")};lines.push(cols.map(c=>csvEscape(obj[c])).join(","));}return lines.join("\n");}
 
@@ -281,7 +319,7 @@ function activeDFileLabel(){if(dActiveFile==="__INPUTS__")return"all input files
 function dRenderTable(){const tbody=document.getElementById("dTbody");document.getElementById("dTableInfo").textContent=`${dVisible.length} visible rows. Scope: ${activeDFileLabel()}.`;if(!dVisible.length){tbody.innerHTML='<tr><td colspan="7" class="small">No rows match this view.</td></tr>';return;}tbody.innerHTML=dVisible.map(r=>renderRow(r,dEffective,dManual,"d")).join("");document.querySelectorAll("#dTbody select[data-review-id]").forEach(sel=>sel.onchange=()=>{if(sel.value)dManual.set(sel.dataset.reviewId,sel.value);else dManual.delete(sel.dataset.reviewId);dApply();});}
 function renderRow(r,effectiveFn,manualMap,prefix){const eff=effectiveFn(r),manual=manualMap.get(r.id)||"";const preview=r.original_preview.map(([h,v])=>`<div class="kv"><strong>${escapeHtml(h)}:</strong> ${escapeHtml(v)}</div>`).join("");const evidence=r.evidence.map(e=>`<div class="kv">• ${escapeHtml(e)}</div>`).join("");const labels=prefix==="c"?COMM_LABELS:LABELS;return`<tr><td><span class="badge ${statusClass(r.match_status)}">${escapeHtml(r.match_status)}</span><div class="small">${escapeHtml(r.confidence)}</div></td><td><span class="badge ${labelClass(r.suggested_label)}">${escapeHtml(r.suggested_label)}</span><select class="reviewselect" data-review-id="${escapeHtml(r.id)}"><option value="" ${manual===""?"selected":""}>Use suggestion</option>${labels.map(l=>`<option value="${l}" ${manual===l?"selected":""}>${l}</option>`).join("")}</select><div style="margin-top:4px"><span class="badge ${labelClass(eff)}">effective: ${escapeHtml(eff)}</span></div></td><td><strong>${escapeHtml(r.input_name||"(no mapped name)")}</strong><div>${escapeHtml(r.input_email||"")}</div><details><summary>row text</summary><div class="small">${escapeHtml(r.dirty_text||"")}</div></details></td><td><strong>${escapeHtml(r.matched_name||"")}</strong><div>${escapeHtml(r.matched_email||"")}</div><div class="small">candidate label: ${escapeHtml(r.candidate_label||"")}</div></td><td>${escapeHtml(r.match_type)}</td><td><details open><summary>preview</summary>${preview||'<span class="small">No previewable values</span>'}</details><details><summary>evidence</summary>${evidence}</details></td><td>${escapeHtml(r.source_file)}<div class="small">row ${escapeHtml(r.row_number)}</div></td></tr>`;}
 function dRenderMapping(){const tracker=dFiles[dTrackerIndex];document.getElementById("dMappingPanel").innerHTML=dFiles.map((file,i)=>{const isTracker=file===tracker;const fields=isTracker?CANONICAL_FIELDS:CANONICAL_FIELDS.filter(f=>f!=="isDoctor");return fileCardHTML(file,i,fields,isTracker?"TRACKER":"INPUT",!file.mapping.email&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName?"No identity fields mapped. Dirty row text will only create review suggestions.":"",isTracker&&!file.mapping.isDoctor?"Tracker needs a mapped user_data.is_doctor column.":"","d");}).join("");document.querySelectorAll("#dMappingPanel select[data-file-index]").forEach(sel=>sel.onchange=()=>{dFiles[Number(sel.dataset.fileIndex)].mapping[sel.dataset.field]=sel.value;dRenderStatus();});}
-function fileCardHTML(file,i,fields,tag,warning,warning2,prefix){const labels={firstName:"first",lastName:"last",fullName:"full",isDoctor:"doctor?",customerName:"customer",company:"company",type:"type",note:"note",label:"label",doctorName:"doctor name"};const rows=fields.map(f=>`<label>${escapeHtml(labels[f]||f)}</label><select data-file-index="${i}" data-field="${f}"><option value="">— none —</option>${file.headers.map(h=>`<option value="${escapeHtml(h)}" ${file.mapping[f]===h?"selected":""}>${escapeHtml(h)}</option>`).join("")}</select>`).join("");return`<div class="filecard"><h3>${escapeHtml(tag)} · ${escapeHtml(file.name)}</h3><div class="meta">${file.rows.length} non-empty · ${file.skippedEmptyRows} skipped</div><div class="mapgrid">${rows}</div>${warning?`<div class="warning">${escapeHtml(warning)}</div>`:""}${warning2?`<div class="warning">${warning2}</div>`:""}</div>`;}
+function fileCardHTML(file,i,fields,tag,warning,warning2,prefix){const labels={firstName:"first",lastName:"last",fullName:"full",isDoctor:"doctor?",customerName:"customer",company:"company",type:"type",note:"note",label:"label",doctorName:"doctor name"};const rows=fields.map(f=>`<label>${escapeHtml(labels[f]||f)}</label><select data-prefix="${escapeHtml(prefix||"")}" data-file-index="${i}" data-field="${f}"><option value="">— none —</option>${file.headers.map(h=>`<option value="${escapeHtml(h)}" ${file.mapping[f]===h?"selected":""}>${escapeHtml(h)}</option>`).join("")}</select>`).join("");return`<div class="filecard"><h3>${escapeHtml(tag)} · ${escapeHtml(file.name)}</h3><div class="meta">${file.rows.length} non-empty · ${file.skippedEmptyRows} skipped</div><div class="mapgrid">${rows}</div>${warning?`<div class="warning">${escapeHtml(warning)}</div>`:""}${warning2?`<div class="warning">${warning2}</div>`:""}</div>`;}
 function dRenderStatus(){if(!dFiles.length){document.getElementById("dFileStatus").textContent="No files loaded.";return;}const tracker=dFiles[dTrackerIndex];document.getElementById("dFileStatus").innerHTML=dFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>${f===tracker?"TRACKER":"INPUT"} · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");}
 function dPopulateTracker(){const sel=document.getElementById("dTrackerSelect");sel.innerHTML="";dFiles.forEach((f,i)=>{const opt=document.createElement("option");opt.value=String(i);opt.textContent=`${f.name}${f.mapping.isDoctor?" ✓ doctor field":""}`;sel.appendChild(opt);});const utenti=dFiles.findIndex(f=>f.name.toLowerCase().includes("utenti_app")),withDoc=dFiles.findIndex(f=>f.mapping.isDoctor);dTrackerIndex=utenti>=0?utenti:withDoc;if(dTrackerIndex<0&&dFiles.length)dTrackerIndex=0;sel.value=String(dTrackerIndex);sel.disabled=false;sel.onchange=()=>{dTrackerIndex=Number(sel.value);dRenderMapping();dRenderStatus();dPopulateFileFilter();if(dAll.length)dApply();};}
 function dPopulateFileFilter(){const sel=document.getElementById("dFileFilter");sel.innerHTML='<option value="__INPUTS__">All input files</option><option value="__ALL__">All files incl. tracker</option>';dFiles.forEach(f=>{const opt=document.createElement("option");opt.value=f.name;opt.textContent=f.name;sel.appendChild(opt);});dActiveFile="__INPUTS__";sel.value=dActiveFile;sel.disabled=false;sel.onchange=()=>{dActiveFile=sel.value;dApply();};}
@@ -302,16 +340,17 @@ let cRefFiles=[],cComFiles=[],cActiveFile="__ALL_COMMERCIAL__",cActiveFilter="",
 function cEffective(r){return cManual.get(r.id)||r.suggested_label;}
 function cFileInScope(r){if(cActiveFile==="__ALL_COMMERCIAL__")return true;return r.source_file===cActiveFile;}
 function cScoped(){return cAll.filter(cFileInScope);}
-function cIsFuzzy(r){return r.match_type!=="EXACT_FULL_NAME"&&r.match_type!=="NO_MATCH"&&r.match_type!=="ORGANIZATION_LIKE_NAME";}
+function cIsExactName(r){return r.match_type==="EXACT_FULL_NAME"||r.match_type==="EXACT_NAME_TOKENS";}
+function cIsFuzzy(r){return !cIsExactName(r)&&r.match_type!=="NO_MATCH"&&r.match_type!=="ORGANIZATION_LIKE_NAME";}
+function cHasReferenceNameMapping(file){return Boolean(file.mapping.doctorName||file.mapping.fullName||(file.mapping.firstName&&file.mapping.lastName));}
+function cHasCommercialNameMapping(file){return Boolean(file.mapping.customerName||file.mapping.fullName||(file.mapping.firstName&&file.mapping.lastName));}
+function cDoctorTitleEvidence(name){return name.hasDoctorTitle?`Mapped commercial name contains doctor title token(s): ${name.doctorTitles.join(", ")}.`:"";}
 function cBuildDoctorRefs(){
   const refs=[];
   for(const file of cRefFiles){
     for(const row of file.rows){
-      // Name-only reference logic: every non-empty row in HCP verificati is treated as a verified doctor candidate.
-      // No DOCTOR_CERTAIN/VERO/TRUE label is required here.
       const doctorFull=getMapped(file,row,"doctorName")||getMapped(file,row,"fullName");
-      const fallback=[doctorFull,getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),getDirtyText(file,row)].filter(Boolean).join(" ");
-      const name=parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),doctorFull,fallback);
+      const name=parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),doctorFull);
       if(!name.fullName) continue;
       refs.push({source_file:file.name,row_number:row.__row_number,row,email:"",name,sourceLabel:"HCP_VERIFICATI_NAME",label:"DOCTOR_CERTAIN"});
     }
@@ -320,8 +359,7 @@ function cBuildDoctorRefs(){
 }
 function cParseCommercialName(file,row){
   const commercialName=getMapped(file,row,"customerName")||getMapped(file,row,"fullName");
-  const fallback=[commercialName,getMapped(file,row,"company"),getMapped(file,row,"note")].filter(Boolean).join(" ");
-  return parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),commercialName,fallback||getDirtyText(file,row));
+  return parseNameFromParts(getMapped(file,row,"firstName"),getMapped(file,row,"lastName"),commercialName);
 }
 function looksLikeOrganizationName(nameText,dirtyText){
   const t=norm([nameText,dirtyText].join(" "));
@@ -331,17 +369,17 @@ function looksLikeOrganizationName(nameText,dirtyText){
 function cFindMatch(file,row,doctorIndex){
   const inputName=cParseCommercialName(file,row);
   const dirty=getDirtyText(file,row);
-  const hasIdentity=Boolean(file.mapping.firstName||file.mapping.lastName||file.mapping.fullName||file.mapping.customerName);
   const config=fuzzyConfig("c");
+  const titleEvidence=cDoctorTitleEvidence(inputName);
 
-  if(looksLikeOrganizationName(inputName.fullName,dirty)){
+  if(looksLikeOrganizationName(inputName.fullName,"")){
     return{
       person:null,
       score:0,
       matchType:"ORGANIZATION_LIKE_NAME",
       status:"UNMATCHED",
       suggestedLabel:"UNKNOWN",
-      evidence:["Commercial customer name looks like an organization/company/clinic/pharmacy. Name-only doctor matching is not applied automatically."]
+      evidence:[titleEvidence,"Commercial customer name looks like an organization/company/clinic/pharmacy. Name-only doctor matching is not applied automatically."].filter(Boolean)
     };
   }
 
@@ -349,44 +387,33 @@ function cFindMatch(file,row,doctorIndex){
   for(const p of doctorIndex.refs){
     let status="UNMATCHED",matchType="NO_MATCH",suggestedLabel="UNKNOWN",evidence=[],score=0;
 
-    if(hasIdentity){
-      const exactName=inputName.fullName&&p.name.fullName&&norm(inputName.fullName)===norm(p.name.fullName);
+    const exactName=exactNameMatch(inputName,p.name);
 
-      if(exactName){
-        score=1;
-        status="MATCHED";
-        matchType="EXACT_FULL_NAME";
-        suggestedLabel="DOCTOR_CERTAIN";
-        evidence.push(`Exact full-name match with HCP verificati: "${inputName.fullName}".`);
-      }else{
-        const s=scoreNameMatch(inputName,p.name);
-        score=s.score;
-        evidence.push(s.reason);
-
-        // Commercial-cleaning policy:
-        // close/fuzzy name matches are NEVER automatic doctors.
-        // They are shown as REVIEW and remain effective UNKNOWN unless manually accepted.
-        if(s.accepted && score>=config.reviewScore){
-          status="REVIEW";
-          matchType="REVIEW_FUZZY_DOCTOR_NAME";
-          suggestedLabel="UNKNOWN";
-          evidence.push("Close/fuzzy name match with HCP verificati. Review required before exporting as doctor.");
-        }else if(s.review && score>=config.reviewScore){
-          status="REVIEW";
-          matchType="REVIEW_DOCTOR_SURNAME_ONLY";
-          suggestedLabel="UNKNOWN";
-          evidence.push("Partial/surname-based candidate. Review required before exporting as doctor.");
-        }
-      }
+    if(exactName.ok){
+      score=1;
+      status="MATCHED";
+      matchType=exactName.matchType;
+      suggestedLabel="DOCTOR_CERTAIN";
+      if(titleEvidence)evidence.push(titleEvidence);
+      evidence.push(exactName.evidence);
     }else{
-      const tName=p.name.fullName;
-      if(dirty&&tName&&dirty.includes(tName)&&tName.length>=5){
-        score=.90;
+      const s=scoreNameMatch(inputName,p.name);
+      score=s.score;
+      evidence.push(s.reason);
+
+      // Commercial-cleaning policy:
+      // close/fuzzy name matches are NEVER automatic doctors.
+      // They are shown as REVIEW and remain effective UNKNOWN unless manually accepted.
+      if(s.accepted && score>=config.reviewScore){
         status="REVIEW";
-        matchType="REVIEW_DIRTY_ROW_TEXT";
+        matchType="REVIEW_FUZZY_DOCTOR_NAME";
         suggestedLabel="UNKNOWN";
-        evidence.push(`Commercial row text contains verified doctor name: "${tName}".`);
-        evidence.push("Review only: no explicit commercial name column is mapped.");
+        evidence.push("Close/fuzzy name match with HCP verificati. Review required before exporting as doctor.");
+      }else if(s.review && score>=config.reviewScore){
+        status="REVIEW";
+        matchType="REVIEW_DOCTOR_SURNAME_ONLY";
+        suggestedLabel="UNKNOWN";
+        evidence.push("Partial/surname-based candidate. Review required before exporting as doctor.");
       }
     }
 
@@ -397,6 +424,16 @@ function cFindMatch(file,row,doctorIndex){
   const best=candidates[0],second=candidates[1];
 
   if(!best||best.score<=0){
+    if(inputName.hasDoctorTitle&&inputName.tokens.length>=2){
+      return{
+        person:null,
+        score:.5,
+        matchType:"REVIEW_TITLE_ONLY_NO_MASTER_CANDIDATE",
+        status:"REVIEW",
+        suggestedLabel:"UNKNOWN",
+        evidence:[titleEvidence,"The mapped commercial name has a doctor title, but no usable HCP verificati candidate was found. Review manually; this is not exported as DOCTOR_CERTAIN."]
+      };
+    }
     return{
       person:null,
       score:0,
@@ -409,7 +446,7 @@ function cFindMatch(file,row,doctorIndex){
 
   const margin=second?best.score-second.score:1;
 
-  if(best.status==="MATCHED"&&best.matchType==="EXACT_FULL_NAME"){
+  if(best.status==="MATCHED"&&cIsExactName({match_type:best.matchType})){
     if(margin<config.margin){
       return{
         person:best.person,
@@ -426,7 +463,7 @@ function cFindMatch(file,row,doctorIndex){
     return{
       person:best.person,
       score:best.score,
-      matchType:"EXACT_FULL_NAME",
+      matchType:best.matchType,
       status:"MATCHED",
       suggestedLabel:"DOCTOR_CERTAIN",
       evidence:best.evidence
@@ -446,6 +483,20 @@ function cFindMatch(file,row,doctorIndex){
     };
   }
 
+  if(inputName.hasDoctorTitle){
+    return{
+      person:best.score>=.25?best.person:null,
+      score:Math.max(best.score,.5),
+      matchType:best.score>=.25?"REVIEW_TITLE_WEAK_MASTER_CANDIDATE":"REVIEW_TITLE_ONLY_NO_MASTER_CANDIDATE",
+      status:"REVIEW",
+      suggestedLabel:"UNKNOWN",
+      evidence:[titleEvidence].concat(best.evidence).concat([
+        best.score>=.25?`Title-based review candidate. Best HCP verificati candidate score ${best.score.toFixed(2)}; not strong enough for automatic doctor export.`:"Title-based review candidate. No strong HCP verificati candidate found.",
+        "Review manually; this is not exported as DOCTOR_CERTAIN unless manually accepted."
+      ])
+    };
+  }
+
   return{
     person:best.person,
     score:best.score,
@@ -459,6 +510,10 @@ function cFindMatch(file,row,doctorIndex){
 function cClassifyAll(){
   if(!cRefFiles.length)throw new Error("Upload at least one HCP verificati / doctor-reference CSV.");
   if(!cComFiles.length)throw new Error("Upload at least one Vendite 2025 / commercial CSV.");
+  const unmappedRefs=cRefFiles.filter(f=>!cHasReferenceNameMapping(f)).map(f=>f.name);
+  if(unmappedRefs.length)throw new Error(`Map each doctor reference file before matching. For ${unmappedRefs.join(", ")}, select the verified full-name column as doctor name/full, or map both first and last.`);
+  const unmappedCommercial=cComFiles.filter(f=>!cHasCommercialNameMapping(f)).map(f=>f.name);
+  if(unmappedCommercial.length)throw new Error(`Map each commercial file before matching. For ${unmappedCommercial.join(", ")}, select the person/customer full-name column as customer/full, or map both first and last.`);
   const idx=cBuildDoctorRefs();
   const res=[];
   for(const file of cComFiles){
@@ -466,7 +521,7 @@ function cClassifyAll(){
       const inputName=cParseCommercialName(file,row);
       let m;
       if(!idx.refs.length){
-        m={person:null,score:0,matchType:"NO_HCP_REFERENCE_NAMES",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:["No usable doctor names were found in HCP verificati. Map the doctor-name column, e.g. input_name, matched_tracker_name, Nome e Cognome, or full name."]};
+        m={person:null,score:0,matchType:"NO_HCP_REFERENCE_NAMES",status:"UNMATCHED",suggestedLabel:"UNKNOWN",evidence:["No usable doctor names were found in the mapped HCP verificati columns. Check that doctor name/full, or first and last, point to populated columns."]};
       }else{
         m=cFindMatch(file,row,idx);
       }
@@ -476,18 +531,18 @@ function cClassifyAll(){
   }
   return res;
 }
-function cFilterDefs(){return[["","All",r=>true],["MATCHED","Certain doctors",r=>r.match_status==="MATCHED"],["REVIEW","Review",r=>r.match_status==="REVIEW"],["UNMATCHED","Unmatched",r=>r.match_status==="UNMATCHED"],["DOCTOR_CERTAIN","Effective doctors",r=>cEffective(r)==="DOCTOR_CERTAIN"],["UNKNOWN","Unknown",r=>cEffective(r)==="UNKNOWN"],["EXCLUDE","Excluded",r=>cEffective(r)==="EXCLUDE"],["EDITED","Edited",r=>cManual.has(r.id)],["EXACT_NAME","Exact name",r=>r.match_type==="EXACT_FULL_NAME"],["NAME_MATCH","Name match",r=>r.match_type.includes("NAME")]];}
+function cFilterDefs(){return[["","All",r=>true],["MATCHED","Certain doctors",r=>r.match_status==="MATCHED"],["REVIEW","Review",r=>r.match_status==="REVIEW"],["UNMATCHED","Unmatched",r=>r.match_status==="UNMATCHED"],["DOCTOR_CERTAIN","Effective doctors",r=>cEffective(r)==="DOCTOR_CERTAIN"],["UNKNOWN","Unknown",r=>cEffective(r)==="UNKNOWN"],["EXCLUDE","Excluded",r=>cEffective(r)==="EXCLUDE"],["EDITED","Edited",r=>cManual.has(r.id)],["EXACT_NAME","Exact name",cIsExactName],["TITLE","Title candidates",r=>r.match_type.includes("TITLE")],["NAME_MATCH","Name match",r=>r.match_type.includes("NAME")]];}
 function cApply(){const q=norm(document.getElementById("cSearch").value),lab=document.getElementById("cLabelFilter").value,def=cFilterDefs().find(([k])=>k===cActiveFilter),fn=def?def[2]:(()=>true);cVisible=cAll.filter(r=>cFileInScope(r)&&fn(r)&&(!lab||cEffective(r)===lab)&&(!q||norm([r.source_file,r.input_email,r.input_name,r.dirty_text,r.matched_email,r.matched_name,r.suggested_label,cEffective(r),r.match_type,r.match_status,r.evidence.join(" ")].join(" ")).includes(q)));cRenderSummary();cRenderPills();cRenderTable();}
-function cRenderSummary(){const scope=cScoped();const c={rows:scope.length,visible:cVisible.length,matched:scope.filter(r=>r.match_status==="MATCHED").length,review:scope.filter(r=>r.match_status==="REVIEW").length,unmatched:scope.filter(r=>r.match_status==="UNMATCHED").length,doctors:scope.filter(r=>cEffective(r)==="DOCTOR_CERTAIN").length,unknown:scope.filter(r=>cEffective(r)==="UNKNOWN").length,edited:scope.filter(r=>cManual.has(r.id)).length,empty:cComFiles.reduce((a,f)=>a+f.skippedEmptyRows,0),exact:scope.filter(r=>r.match_type==="EXACT_FULL_NAME").length,fuzzy:scope.filter(cIsFuzzy).length};renderCards("cSummary",[["Rows",c.rows],["Visible",c.visible],["Certain doctors",c.matched],["Review",c.review],["Unmatched",c.unmatched],["Effective doctors",c.doctors],["Unknown",c.unknown],["Edited",c.edited],["Empty skipped",c.empty],["Exact name",c.exact],["Name/fuzzy",c.fuzzy]]);}
+function cRenderSummary(){const scope=cScoped();const c={rows:scope.length,visible:cVisible.length,matched:scope.filter(r=>r.match_status==="MATCHED").length,review:scope.filter(r=>r.match_status==="REVIEW").length,unmatched:scope.filter(r=>r.match_status==="UNMATCHED").length,doctors:scope.filter(r=>cEffective(r)==="DOCTOR_CERTAIN").length,unknown:scope.filter(r=>cEffective(r)==="UNKNOWN").length,edited:scope.filter(r=>cManual.has(r.id)).length,empty:cComFiles.reduce((a,f)=>a+f.skippedEmptyRows,0),exact:scope.filter(cIsExactName).length,fuzzy:scope.filter(cIsFuzzy).length};renderCards("cSummary",[["Rows",c.rows],["Visible",c.visible],["Certain doctors",c.matched],["Review",c.review],["Unmatched",c.unmatched],["Effective doctors",c.doctors],["Unknown",c.unknown],["Edited",c.edited],["Empty skipped",c.empty],["Exact name",c.exact],["Name/fuzzy",c.fuzzy]]);}
 function cRenderPills(){const scope=cScoped();document.getElementById("cPills").innerHTML=cFilterDefs().map(([key,label,fn])=>`<span class="pill ${cActiveFilter===key?"active":""}" data-filter="${escapeHtml(key)}">${escapeHtml(label)} ${scope.filter(fn).length}</span>`).join("");document.querySelectorAll("#cPills .pill").forEach(el=>el.onclick=()=>{cActiveFilter=el.dataset.filter;cApply();});}
 function cRenderTable(){const tbody=document.getElementById("cTbody");document.getElementById("cTableInfo").textContent=`${cVisible.length} visible commercial rows. Review suggestions remain UNKNOWN unless manually changed.`;if(!cVisible.length){tbody.innerHTML='<tr><td colspan="7" class="small">No rows match this view.</td></tr>';return;}tbody.innerHTML=cVisible.map(r=>renderRow(r,cEffective,cManual,"c")).join("");document.querySelectorAll("#cTbody select[data-review-id]").forEach(sel=>sel.onchange=()=>{if(sel.value)cManual.set(sel.dataset.reviewId,sel.value);else cManual.delete(sel.dataset.reviewId);cApply();});}
-function cRenderMapping(){let html="";html += cRefFiles.map((file,i)=>fileCardHTML(file,i,REF_FIELDS,"HCP VERIFICATI",!file.mapping.doctorName&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName?"No doctor-name field mapped. Map the column containing verified doctor full names (e.g. input_name, matched_tracker_name, Nome e Cognome).":"","","cRef")).join("");html += cComFiles.map((file,i)=>fileCardHTML(file,i,COMMERCIAL_FIELDS,"VENDITE / COMMERCIAL",!file.mapping.customerName&&!file.mapping.firstName&&!file.mapping.lastName&&!file.mapping.fullName?"No commercial customer/name field mapped. Map Cliente or the full-name column from Vendite 2025.":"","","cCom")).join("");document.getElementById("cMappingPanel").innerHTML=html;document.querySelectorAll("#cMappingPanel select[data-file-index]").forEach(sel=>sel.onchange=()=>{const arr=sel.dataset.prefix==="cRef"?cRefFiles:cComFiles;arr[Number(sel.dataset.fileIndex)].mapping[sel.dataset.field]=sel.value;cRenderStatus();});}
+function cRenderMapping(){let html="";html += cRefFiles.map((file,i)=>fileCardHTML(file,i,REF_FIELDS,"HCP VERIFICATI",!cHasReferenceNameMapping(file)?"Required: map doctor name to the verified doctor full-name column. If the file has separate columns, map both first and last instead.":"","","cRef")).join("");html += cComFiles.map((file,i)=>fileCardHTML(file,i,COMMERCIAL_FIELDS,"VENDITE / COMMERCIAL",!cHasCommercialNameMapping(file)?"Required: map customer to the commercial person/customer full-name column, for example Cliente. If the file has separate columns, map both first and last instead.":"","","cCom")).join("");document.getElementById("cMappingPanel").innerHTML=html;document.querySelectorAll("#cMappingPanel select[data-file-index]").forEach(sel=>sel.onchange=()=>{const arr=sel.dataset.prefix==="cRef"?cRefFiles:cComFiles;arr[Number(sel.dataset.fileIndex)].mapping[sel.dataset.field]=sel.value;cRenderMapping();cRenderStatus();});}
 function cRenderStatus(){if(!cRefFiles.length&&!cComFiles.length){document.getElementById("cFileStatus").textContent="No files loaded.";return;}const refMsg=cRefFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>DOCTOR REF · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");const comMsg=cComFiles.map(f=>{const mapped=Object.entries(f.mapping).filter(([,v])=>v).map(([k,v])=>`${k}=${v}`).join(", ")||"none";return`<div><strong>COMMERCIAL · ${escapeHtml(f.name)}</strong><br>${f.rows.length} non-empty · ${f.skippedEmptyRows} skipped · ${escapeHtml(mapped)}</div>`;}).join("<hr style='border:0;border-top:1px solid #eee;margin:6px 0'>");document.getElementById("cFileStatus").innerHTML=[refMsg,comMsg].filter(Boolean).join("<hr style='border:0;border-top:2px solid #ddd;margin:8px 0'>");}
 function cPopulateFileFilter(){const sel=document.getElementById("cFileFilter");sel.innerHTML='<option value="__ALL_COMMERCIAL__">All commercial files</option>';cComFiles.forEach(f=>{const opt=document.createElement("option");opt.value=f.name;opt.textContent=f.name;sel.appendChild(opt);});cActiveFile="__ALL_COMMERCIAL__";sel.value=cActiveFile;sel.disabled=false;sel.onchange=()=>{cActiveFile=sel.value;cApply();};}
 function cRowsForMode(mode){if(mode==="current_view")return cVisible.slice();return cAll.filter(r=>{if(!cFileInScope(r))return false;if(mode==="DOCTOR_CERTAIN")return cEffective(r)==="DOCTOR_CERTAIN";if(mode==="REVIEW")return r.match_status==="REVIEW";if(mode==="UNKNOWN")return cEffective(r)==="UNKNOWN";if(mode==="all_except_exclude")return cEffective(r)!=="EXCLUDE";return false;});}
 function cScopeFiles(){if(cActiveFile==="__ALL_COMMERCIAL__")return cComFiles.slice();return cComFiles.filter(f=>f.name===cActiveFile);}
 function cDownloadOriginal(mode){for(const file of cScopeFiles()){const rows=cRowsForMode(mode).filter(r=>r.source_file===file.name);const msg=rows.length?null:`No commercial rows exported from ${file.name}. Export mode: ${mode}.`;downloadText(`${file.name.replace(/\.csv$/i,"")}_${mode.toLowerCase()}.csv`,serializeOriginalRows(file,rows,msg));}}
-document.getElementById("cLoad").onclick=async()=>{try{clearMessage("cMessage");const refs=document.getElementById("cRefFiles").files,coms=document.getElementById("cComFiles").files;if(!refs.length){showMessage("cMessage","Select at least one doctor reference CSV.");return;}if(!coms.length){showMessage("cMessage","Select at least one commercial CSV.");return;}cRefFiles=await loadCSVFiles(refs,"doctor reference");const refWarn=cRefFiles._warnings;cComFiles=await loadCSVFiles(coms,"commercial file");const comWarn=cComFiles._warnings;cRefFiles.forEach(f=>f.mapping=autoMap(f,REF_FIELDS));cComFiles.forEach(f=>f.mapping=autoMap(f,COMMERCIAL_FIELDS));cAll=[];cVisible=[];cManual.clear();cActiveFilter="";cActiveFile="__ALL_COMMERCIAL__";cPopulateFileFilter();cRenderMapping();cRenderStatus();document.getElementById("cRun").disabled=false;document.getElementById("cReset").disabled=false;const warns=[refWarn,comWarn].filter(Boolean).join(" ");if(warns)showMessage("cMessage",warns,"error");else showMessage("cMessage","CSV files loaded. Map HCP verificati doctor names and Vendite 2025 Cliente/customer names, then find certain doctors.","ok");}catch(e){console.error(e);showMessage("cMessage",e.message||String(e));}};
+document.getElementById("cLoad").onclick=async()=>{try{clearMessage("cMessage");const refs=document.getElementById("cRefFiles").files,coms=document.getElementById("cComFiles").files;if(!refs.length){showMessage("cMessage","Select at least one doctor reference CSV.");return;}if(!coms.length){showMessage("cMessage","Select at least one commercial CSV.");return;}cRefFiles=await loadCSVFiles(refs,"doctor reference");const refWarn=cRefFiles._warnings;cComFiles=await loadCSVFiles(coms,"commercial file");const comWarn=cComFiles._warnings;cRefFiles.forEach(f=>f.mapping={});cComFiles.forEach(f=>f.mapping={});cAll=[];cVisible=[];cManual.clear();cActiveFilter="";cActiveFile="__ALL_COMMERCIAL__";cPopulateFileFilter();cRenderMapping();cRenderStatus();document.getElementById("cRun").disabled=false;document.getElementById("cReset").disabled=false;const warns=[refWarn,comWarn].filter(Boolean).join(" ");if(warns)showMessage("cMessage",warns,"error");else showMessage("cMessage","CSV files loaded. Manually map the required name columns, then find certain doctors.","ok");}catch(e){console.error(e);showMessage("cMessage",e.message||String(e));}};
 document.getElementById("cRun").onclick=()=>{try{clearMessage("cMessage");cAll=cClassifyAll();cManual.clear();cActiveFilter="";document.getElementById("cSearch").disabled=false;document.getElementById("cLabelFilter").disabled=false;document.getElementById("cReport").disabled=false;document.getElementById("cViewReport").disabled=false;document.getElementById("cDownloadOriginal").disabled=false;document.getElementById("cExportMode").disabled=false;cApply();cRenderStatus();showMessage("cMessage","Commercial cleaning completed.","ok");}catch(e){console.error(e);showMessage("cMessage",e.message||String(e));}};
 document.getElementById("cReport").onclick=()=>downloadText("commercial_doctor_cleaning_report.csv",reportCSV(cAll,"commercial"));
 document.getElementById("cViewReport").onclick=()=>downloadText("commercial_doctor_current_view_report.csv",reportCSV(cVisible,"commercial"));
